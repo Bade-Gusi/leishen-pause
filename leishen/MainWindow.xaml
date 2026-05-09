@@ -23,17 +23,13 @@
             <DoubleAnimation Storyboard.TargetProperty="RenderTransform.ScaleX" To="1" Duration="0:0:0.15"/>
             <DoubleAnimation Storyboard.TargetProperty="RenderTransform.ScaleY" To="1" Duration="0:0:0.15"/>
         </Storyboard>
-        <!-- 状态光晕脉冲（只脉冲 Opacity，不动画 Width） -->
+        <!-- 状态光晕脉冲 -->
         <Storyboard x:Key="PulseGlow" RepeatBehavior="Forever">
             <DoubleAnimationUsingKeyFrames Storyboard.TargetProperty="Opacity">
                 <EasingDoubleKeyFrame KeyTime="0:0:0" Value="0.15"/>
                 <EasingDoubleKeyFrame KeyTime="0:0:1" Value="0.4"><EasingDoubleKeyFrame.EasingFunction><SineEase EasingMode="EaseInOut"/></EasingDoubleKeyFrame.EasingFunction></EasingDoubleKeyFrame>
                 <EasingDoubleKeyFrame KeyTime="0:0:2" Value="0.15"><EasingDoubleKeyFrame.EasingFunction><SineEase EasingMode="EaseInOut"/></EasingDoubleKeyFrame.EasingFunction></EasingDoubleKeyFrame>
             </DoubleAnimationUsingKeyFrames>
-        </Storyboard>
-        <!-- 状态圆环旋转 -->
-        <Storyboard x:Key="SpinRing" RepeatBehavior="Forever">
-            <DoubleAnimation Storyboard.TargetProperty="RenderTransform.Angle" From="0" To="360" Duration="0:0:2"/>
         </Storyboard>
         <!-- 加载旋转 -->
         <Storyboard x:Key="SpinAnimation" RepeatBehavior="Forever">
@@ -149,9 +145,7 @@
                             </StackPanel>
                         </StackPanel>
                         <Grid Grid.Column="1" Width="140" Margin="0,0,20,0">
-                            <Ellipse x:Name="StatusRing" Width="100" Height="100" Stroke="#00C853" StrokeThickness="2" Opacity="0.2">
-                                <Ellipse.RenderTransform><RotateTransform CenterX="50" CenterY="50"/></Ellipse.RenderTransform>
-                            </Ellipse>
+                            <Ellipse x:Name="StatusRing" Width="100" Height="100" Stroke="#00C853" StrokeThickness="2" Opacity="0.2" StrokeDashArray="150,150" StrokeDashOffset="0"/>
                             <Ellipse x:Name="StatusGlow" Width="90" Height="90" Fill="#00C853" Opacity="0.1">
                                 <Ellipse.Effect><BlurEffect Radius="30"/></Ellipse.Effect>
                             </Ellipse>

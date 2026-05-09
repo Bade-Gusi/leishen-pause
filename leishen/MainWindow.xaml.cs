@@ -164,29 +164,51 @@ namespace leishen
                 if (StatusDot != null) StatusDot.Fill = rc;
 
                 var pulse = Resources["PulseGlow"] as Storyboard;
-                var spinRing = Resources["SpinRing"] as Storyboard;
-
-                // 停止所有动画先
                 pulse?.Stop(StatusGlow);
-                spinRing?.Stop(StatusRing);
-                if (StatusRing != null) { StatusRing.Opacity = 0.2; StatusRing.RenderTransform = new RotateTransform(0); }
+
+                // 停止 StatusRing 的 StrokeDashOffset 动画（扫描旋转）
+                StopRingScan();
+
+                if (StatusRing != null) StatusRing.Opacity = 0.2;
                 if (StatusGlow != null) StatusGlow.Opacity = 0.1;
                 if (StatusDot != null) StatusDot.Opacity = 0.9;
 
                 if (isGaming)
                 {
-                    // 游戏中：光晕脉冲
                     pulse?.Begin(StatusGlow);
                     if (StatusRing != null) StatusRing.Opacity = 0.4;
                     if (StatusGlow != null) StatusGlow.Opacity = 0.25;
                 }
                 else if (icon == "⟳")
                 {
-                    // 扫描中：圆环旋转
-                    spinRing?.Begin(StatusRing);
+                    StartRingScan();
                     if (StatusGlow != null) StatusGlow.Opacity = 0.05;
                 }
             });
+        }
+
+        private Storyboard? _ringScanSb;
+        private void StartRingScan()
+        {
+            StopRingScan();
+            if (StatusRing == null) return;
+            var anim = new DoubleAnimation
+            {
+                From = 0, To = 300,
+                Duration = TimeSpan.FromSeconds(2),
+                RepeatBehavior = RepeatBehavior.Forever
+            };
+            _ringScanSb = new Storyboard();
+            Storyboard.SetTarget(anim, StatusRing);
+            Storyboard.SetTargetProperty(anim, new PropertyPath("StrokeDashOffset"));
+            _ringScanSb.Children.Add(anim);
+            _ringScanSb.Begin();
+        }
+        private void StopRingScan()
+        {
+            _ringScanSb?.Stop();
+            _ringScanSb = null;
+            if (StatusRing != null) StatusRing.StrokeDashOffset = 0;
         }
 
         private void StartSpinner() { SafeUI(() => { SpinnerBorder.Visibility = Visibility.Visible; (Resources["SpinAnimation"] as Storyboard)?.Begin(Spinner); }); }
@@ -437,7 +459,15 @@ namespace leishen
             AddLog($"⌨ 热键捕获坐标：({_manualX}, {_manualY})");
         }
 
-        private void UpdateCoordDisplay() => SafeUI(() => { if (TxtCoordDisplay != null) TxtCoordDisplay.Text = $"({_manualX}, {_manualY})"; });
+        private void UpdateCoordDisplay()
+        {
+            SafeUI(() => {
+                if (TxtCoordDisplay != null)
+                    TxtCoordDisplay.Text = _manualX == 160 && _manualY == 360
+                        ? Lang.Get("coord_not_set")
+                        : $"({_manualX}, {_manualY})";
+            });
+        }
 
         private void LoadConfig() { try { if (File.Exists(_configPath)) { var c = JsonSerializer.Deserialize<CoordConfig>(File.ReadAllText(_configPath)); if (c != null) { _manualX = c.X; _manualY = c.Y; } } } catch { } }
         private void SaveConfig() { try { File.WriteAllText(_configPath, JsonSerializer.Serialize(new CoordConfig { X = _manualX, Y = _manualY })); } catch { } }
