@@ -166,9 +166,14 @@
                         <Button.Triggers><EventTrigger RoutedEvent="MouseEnter"><BeginStoryboard Storyboard="{StaticResource BtnScaleEnter}"/></EventTrigger><EventTrigger RoutedEvent="MouseLeave"><BeginStoryboard Storyboard="{StaticResource BtnScaleLeave}"/></EventTrigger></Button.Triggers>
                     </Button>
                     <Border x:Name="SpinnerBorder" Grid.Column="1" Width="50" Height="50" Margin="8,0,0,0" Visibility="Visible">
-                        <Ellipse x:Name="Spinner" Width="24" Height="24" Stroke="#00C853" StrokeThickness="3" StrokeDashArray="20,100" VerticalAlignment="Center" HorizontalAlignment="Center">
-                            <Ellipse.RenderTransform><RotateTransform CenterX="12" CenterY="12"/></Ellipse.RenderTransform>
-                        </Ellipse>
+                        <Grid Width="24" Height="24">
+                            <Ellipse Width="24" Height="24" Stroke="#00C853" StrokeThickness="3" Opacity="0.2"/>
+                            <Ellipse x:Name="Spinner" Width="24" Height="24" Stroke="#00C853" StrokeThickness="3"
+                                     StrokeDashArray="40,30" StrokeDashCap="Round"
+                                     RenderTransformOrigin="0.5,0.5" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                <Ellipse.RenderTransform><RotateTransform CenterX="12" CenterY="12"/></Ellipse.RenderTransform>
+                            </Ellipse>
+                        </Grid>
                     </Border>
                 </Grid>
 

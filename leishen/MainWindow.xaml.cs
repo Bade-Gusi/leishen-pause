@@ -450,17 +450,12 @@ namespace leishen
             AddLog(Lang.Get("log_update_checking"));
             try
             {
-                var handler = new System.Net.Http.HttpClientHandler();
-                try
+                // 使用系统代理设置（自动适配 IE/Windows 代理配置）
+                var handler = new System.Net.Http.HttpClientHandler
                 {
-                    var proxyUri = new Uri("http://127.0.0.1:7897");
-                    var testReq = System.Net.WebRequest.CreateHttp("http://127.0.0.1:7897");
-                    testReq.Timeout = 2000; testReq.Method = "GET";
-                    using var testResp = (System.Net.HttpWebResponse)await Task.Run(() => (System.Net.HttpWebResponse)testReq.GetResponse());
-                    if (testResp.StatusCode == System.Net.HttpStatusCode.OK || testResp.StatusCode == System.Net.HttpStatusCode.BadRequest)
-                    { handler.Proxy = new System.Net.WebProxy(proxyUri); handler.UseProxy = true; }
-                }
-                catch { handler.UseProxy = true; handler.Proxy = System.Net.Http.HttpClient.DefaultProxy; }
+                    UseProxy = true,
+                    Proxy = System.Net.Http.HttpClient.DefaultProxy
+                };
                 using var client = new System.Net.Http.HttpClient(handler);
                 client.DefaultRequestHeaders.UserAgent.ParseAdd("PUBGMonitor/2.0");
                 client.Timeout = TimeSpan.FromSeconds(15);
