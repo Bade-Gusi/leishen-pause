@@ -257,70 +257,106 @@ namespace leishen
             AddLog($"{Lang.Get("log_window_found")} ({winTitle})");
 
             if (TryUiaClick(hwnd)) return;
-            if (TryFindAnyClickable(hwnd)) return;
             AddLog("🖱 使用预设坐标 PostMessage");
             ManualClick(hwnd);
         }
 
+        /// 构造 LPARAM 编码坐标: 低16位=X, 高16位=Y
+        private IntPtr MakeLParam(int x, int y) => (IntPtr)((y << 16) | (x & 0xFFFF));
+
+        // 策略1: UI Automation + InvokePattern（首选安全方案）
         private bool TryUiaClick(IntPtr hwnd)
         {
             try
             {
                 var root = AutomationElement.FromHandle(hwnd);
                 if (root == null) return false;
-                var cond = new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Button);
-                foreach (AutomationElement btn in root.FindAll(TreeScope.Descendants, cond))
+
+                // 查找所有控件，不限按钮类型
+                var allControls = root.FindAll(TreeScope.Descendants,
+                    new PropertyCondition(AutomationElement.IsEnabledProperty, true));
+
+                foreach (AutomationElement el in allControls)
                 {
-                    string name = btn.Current.Name;
-                    string aid = btn.Current.AutomationId;
-                    if ((!string.IsNullOrEmpty(name) && (name.Contains("暂停") || name.Contains("Pause") || name.Contains("pause") || name.Contains("一時停止"))) ||
-                        (!string.IsNullOrEmpty(aid) && aid.IndexOf("pause", StringComparison.OrdinalIgnoreCase) >= 0))
+                    string name = el.Current.Name;
+                    string aid = el.Current.AutomationId;
+                    string ctrlType = el.Current.ControlType.ProgrammaticName;
+
+                    // 优先找名字含暂停的控件
+                    bool isPauseBtn = (!string.IsNullOrEmpty(name) && (name.Contains("暂停") || name.IndexOf("pause", StringComparison.OrdinalIgnoreCase) >= 0));
+                    bool isPauseAid = (!string.IsNullOrEmpty(aid) && aid.IndexOf("pause", StringComparison.OrdinalIgnoreCase) >= 0);
+
+                    if (isPauseBtn || isPauseAid)
                     {
-                        AddLog($"{Lang.Get("log_auto_click")}: Name={name}");
-                        if (btn.TryGetCurrentPattern(InvokePattern.Pattern, out object p))
+                        AddLog($"📌 找到暂停控件: Name='{name}' Type={ctrlType}");
+
+                        // 尝试 InvokePattern
+                        if (el.TryGetCurrentPattern(InvokePattern.Pattern, out object p))
                         { ((InvokePattern)p).Invoke(); AddLog(Lang.Get("log_pause_success")); return true; }
-                        if (!btn.Current.BoundingRectangle.IsEmpty)
+
+                        // 尝试 TogglePattern
+                        if (el.TryGetCurrentPattern(TogglePattern.Pattern, out object tp))
+                        { ((TogglePattern)tp).Toggle(); AddLog("✅ TogglePattern 调用成功"); return true; }
+
+                        // 尝试 SelectionItemPattern
+                        if (el.TryGetCurrentPattern(SelectionItemPattern.Pattern, out object sp))
+                        { ((SelectionItemPattern)sp).Select(); AddLog("✅ SelectionItemPattern 调用成功"); return true; }
+
+                        // PostMessage 带坐标
+                        if (!el.Current.BoundingRectangle.IsEmpty)
                         {
-                            SendMessage(hwnd, WM_LBUTTONDOWN, (IntPtr)1, IntPtr.Zero);
+                            var r = el.Current.BoundingRectangle;
+                            int cx = (int)(r.Left + r.Width / 2);
+                            int cy = (int)(r.Top + r.Height / 2);
+                            var rootRect = root.Current.BoundingRectangle;
+                            int rx = cx - (int)rootRect.Left;
+                            int ry = cy - (int)rootRect.Top;
+                            AddLog($"📨 PostMessage ({rx}, {ry})");
+                            SendMessage(hwnd, WM_LBUTTONDOWN, (IntPtr)1, MakeLParam(rx, ry));
                             System.Threading.Thread.Sleep(30);
-                            SendMessage(hwnd, WM_LBUTTONUP, (IntPtr)0, IntPtr.Zero);
-                            AddLog("✅ PostMessage 点击完成"); return true;
+                            SendMessage(hwnd, WM_LBUTTONUP, (IntPtr)0, MakeLParam(rx, ry));
+                            return true;
                         }
                     }
                 }
-            }
-            catch { }
-            return false;
-        }
 
-        private bool TryFindAnyClickable(IntPtr hwnd)
-        {
-            try
-            {
-                var root = AutomationElement.FromHandle(hwnd);
-                if (root == null) return false;
-                var all = root.FindAll(TreeScope.Descendants,
+                // 没找到暂停按钮，尝试所有可点击的控件
+                AddLog("未找到暂停文本控件，尝试枚举所有可点击控件...");
+                var clickable = root.FindAll(TreeScope.Descendants,
                     new OrCondition(
                         new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Button),
-                        new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.CheckBox)));
-                foreach (AutomationElement el in all)
+                        new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.CheckBox),
+                        new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.RadioButton),
+                        new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Hyperlink)));
+
+                foreach (AutomationElement el in clickable)
+                {
                     if (el.TryGetCurrentPattern(InvokePattern.Pattern, out object p))
-                    { ((InvokePattern)p).Invoke(); AddLog("✅ InvokePattern 调用成功"); return true; }
+                    {
+                        AddLog($"  尝试点击: Name='{el.Current.Name}'");
+                        ((InvokePattern)p).Invoke();
+                        AddLog("✅ InvokePattern 调用成功");
+                        return true;
+                    }
+                }
             }
-            catch { }
+            catch (Exception ex) { AddLog($"自动点击异常: {ex.Message}"); }
             return false;
         }
 
+        // 策略2: 使用用户保存的坐标，通过 PostMessage 带坐标发送
         private void ManualClick(IntPtr hwnd)
         {
             if (!GetWindowRect(hwnd, out RECT rect)) { AddLog("无法获取窗口矩形"); return; }
             int w = rect.Right - rect.Left, h = rect.Bottom - rect.Top;
             if (_manualX < 0 || _manualX > w || _manualY < 0 || _manualY > h)
             { _manualX = w / 2; _manualY = h / 2; SaveConfig(); UpdateCoordDisplay(); }
-            AddLog($"📨 PostMessage ({_manualX}, {_manualY})");
-            SendMessage(hwnd, WM_LBUTTONDOWN, (IntPtr)1, IntPtr.Zero);
+            AddLog($"📨 PostMessage 带坐标 ({_manualX}, {_manualY})");
+            var lParam = MakeLParam(_manualX, _manualY);
+            SendMessage(hwnd, WM_LBUTTONDOWN, (IntPtr)1, lParam);
             System.Threading.Thread.Sleep(50);
-            SendMessage(hwnd, WM_LBUTTONUP, (IntPtr)0, IntPtr.Zero);
+            SendMessage(hwnd, WM_LBUTTONUP, (IntPtr)0, lParam);
+            AddLog("✅ PostMessage 点击完成");
         }
 
         // ======================== 提醒窗口 ========================
@@ -449,7 +485,6 @@ namespace leishen
         {
             SafeUI(() =>
             {
-                if (!_isInitialized) return; // 防止初始化前调用
                 UpdateColors();
 
                 // 主容器
@@ -479,9 +514,6 @@ namespace leishen
                 if (LogList != null) SetColor(LogList, WpfControl.BackgroundProperty, _bg);
             });
         }
-
-        private bool _isInitialized = false;
-        private void MarkInitialized() { _isInitialized = true; }
 
         private void SetColor(DependencyObject target, DependencyProperty prop, Color toColor)
         {
@@ -551,7 +583,7 @@ namespace leishen
             IntPtr hwnd = IntPtr.Zero;
             foreach (string t in titles) { hwnd = FindWindow(null, t); if (hwnd != IntPtr.Zero) break; }
             if (hwnd == IntPtr.Zero) { AddLog("未找到雷神加速器窗口"); return; }
-            if (TryUiaClick(hwnd) || TryFindAnyClickable(hwnd)) AddLog("✅ 自动点击成功");
+            if (TryUiaClick(hwnd)) AddLog("✅ 自动点击成功");
             else ManualClick(hwnd);
         }
 
@@ -619,7 +651,25 @@ namespace leishen
                 Helper.SetText(TxtOptAutostart, Lang.Get("opt_autostart"));
                 Helper.SetText(TxtOptReminder, Lang.Get("opt_reminder"));
                 Helper.SetText(TxtOptUpdate, Lang.Get("opt_check_update"));
+                Helper.SetText(TxtSectionCoord, Lang.Get("section_coord"));
+                Helper.SetText(TxtSectionOptions, Lang.Get("section_options"));
+                Helper.SetText(TxtSectionLog, Lang.Get("section_log"));
+                Helper.SetText(TxtAppTitle, Lang.Get("app_title"));
+                Helper.SetText(TxtStatusLabel, Lang.Get("status_label"));
+                Helper.SetText(TxtTodayLabel, Lang.Get("today_pause"));
+                Helper.SetText(TxtSavedLabel, Lang.Get("saved"));
+                Helper.SetContent(BtnCapture, Lang.Get("btn_capture"));
+                Helper.SetContent(BtnTestClick, Lang.Get("btn_test"));
+                Helper.SetContent(BtnCheckUpdate, Lang.Get("btn_check_update"));
+                Helper.SetContent(BtnClearLog, Lang.Get("btn_clear_log"));
                 UpdateStatisticsDisplay();
+                Helper.SetText(TxtSectionCoordDesc, Lang.Get("section_coord_desc"));
+                Helper.SetText(TxtCoordLabel, Lang.Get("coord_label"));
+                Helper.SetText(TxtCoordHint, Lang.Get("coord_hint"));
+                Helper.SetText(TxtSectionOptionsDesc, Lang.Get("section_options_desc"));
+                Helper.SetText(TxtSectionLogDesc, Lang.Get("section_log_desc"));
+                Helper.SetText(TxtFooter, Lang.Get("footer_copyright"));
+                Helper.SetText(TxtQQ, "QQ: 2994938720");
                 if (StatusText != null)
                     StatusText.Text = Lang.Get(_isGameRunning ? "status_gaming" : _isMonitoring ? "status_scanning" : "status_idle");
                 if (GameNameText != null)
