@@ -27,14 +27,20 @@ namespace leishen
     public partial class MainWindow : Window
     {
         [DllImport("user32.dll")] static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
+        [DllImport("user32.dll")] static extern IntPtr FindWindowEx(IntPtr hWndParent, IntPtr hWndChildAfter, string lpClassName, string lpWindowName);
         [DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr hwnd, out RECT lpRect);
         [DllImport("user32.dll")] static extern IntPtr WindowFromPoint(POINT point);
         [DllImport("user32.dll")] static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
+        [DllImport("user32.dll")] static extern int GetWindowTextLength(IntPtr hWnd);
+        [DllImport("user32.dll")] static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
+        [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr hWnd);
+        [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
         [DllImport("user32.dll")] static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
         [DllImport("user32.dll")] static extern bool UnregisterHotKey(IntPtr hWnd, int id);
         [DllImport("user32.dll")] static extern IntPtr GetAncestor(IntPtr hwnd, uint gaFlags);
         [DllImport("user32.dll")] static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
         [DllImport("user32.dll")] static extern bool GetCursorPos(out POINT lpPoint);
+        private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
         private const uint WM_LBUTTONDOWN = 0x0201;
         private const uint WM_LBUTTONUP = 0x0202;
         private const uint GA_ROOT = 2;
@@ -282,20 +288,79 @@ namespace leishen
             });
         }
 
+        // ======================== 查找雷神加速器窗口 ========================
+        private IntPtr FindLeishenWindow()
+        {
+            IntPtr found = IntPtr.Zero;
+            string foundTitle = "";
+
+            EnumWindows((hWnd, lParam) =>
+            {
+                if (!IsWindowVisible(hWnd)) return true;
+                int len = GetWindowTextLength(hWnd);
+                if (len == 0) return true;
+                var sb = new StringBuilder(len + 1);
+                GetWindowText(hWnd, sb, sb.Capacity);
+                string title = sb.ToString();
+
+                // 匹配含"雷神"或"加速器"的窗口
+                if (title.Contains("雷神") || title.Contains("LeiShen") || title.Contains("加速器"))
+                {
+                    // 排除雷神登录器/网页等（只保留主窗口）
+                    // 获取进程名进一步确认
+                    uint pid = 0;
+                    GetWindowThreadProcessId(hWnd, out pid);
+                    string processName = "";
+                    try { processName = Process.GetProcessById((int)pid).ProcessName; }
+                    catch { }
+
+                    AddLog($"  窗口: '{title}' 进程: {processName}");
+                    found = hWnd;
+                    foundTitle = title;
+                    return false; // 找到就停止
+                }
+                return true;
+            }, IntPtr.Zero);
+
+            if (found != IntPtr.Zero)
+                AddLog($"{Lang.Get("log_window_found")} ({foundTitle})");
+            else
+                AddLog(Lang.Get("log_window_not_found"));
+
+            return found;
+        }
+
+        // 测试用：打印所有可见窗口
+        private void DumpAllWindows()
+        {
+            AddLog("=== 所有可见窗口 ===");
+            EnumWindows((hWnd, lParam) =>
+            {
+                if (!IsWindowVisible(hWnd)) return true;
+                int len = GetWindowTextLength(hWnd);
+                if (len == 0) return true;
+                var sb = new StringBuilder(len + 1);
+                GetWindowText(hWnd, sb, sb.Capacity);
+                string title = sb.ToString();
+                uint pid = 0;
+                GetWindowThreadProcessId(hWnd, out pid);
+                string pn = "";
+                try { pn = Process.GetProcessById((int)pid).ProcessName; } catch { }
+                AddLog($"  [{pn}] {title}");
+                return true;
+            }, IntPtr.Zero);
+            AddLog("=== 窗口列举完毕 ===");
+        }
+
         // ======================== 暂停 ========================
         private void DoPause()
         {
-            string[] titles = { "雷神加速器", "雷神加速器 - 加速游戏", "LeiShen", "雷神" };
-            IntPtr hwnd = IntPtr.Zero;
-            foreach (string t in titles) { hwnd = FindWindow(null, t); if (hwnd != IntPtr.Zero) break; }
-            if (hwnd == IntPtr.Zero) { AddLog(Lang.Get("log_window_not_found")); return; }
+            IntPtr hwnd = FindLeishenWindow();
+            if (hwnd == IntPtr.Zero) return;
 
             var titleBuf = new StringBuilder(256);
             GetWindowText(hwnd, titleBuf, titleBuf.Capacity);
             string winTitle = titleBuf.ToString();
-            if (!winTitle.Contains("雷神") && !winTitle.Contains("LeiShen"))
-            { AddLog($"❌ 安全拦截：目标窗口不是雷神加速器 ({winTitle})"); return; }
-            AddLog($"{Lang.Get("log_window_found")} ({winTitle})");
 
             if (TryUiaClick(hwnd)) return;
             AddLog("🖱 使用预设坐标 PostMessage");
@@ -510,7 +575,7 @@ namespace leishen
             AddLog(Lang.Get("log_update_checking"));
             try
             {
-                // 使用系统代理设置（自动适配 IE/Windows 代理配置）
+                // 使用系统代理设置
                 var handler = new System.Net.Http.HttpClientHandler
                 {
                     UseProxy = true,
@@ -519,7 +584,9 @@ namespace leishen
                 using var client = new System.Net.Http.HttpClient(handler);
                 client.DefaultRequestHeaders.UserAgent.ParseAdd("PUBGMonitor/2.0");
                 client.Timeout = TimeSpan.FromSeconds(15);
-                var resp = await client.GetStringAsync($"https://api.github.com/repos/{GitHubRepoOwner}/{GitHubRepoName}/releases/latest");
+                string url = $"https://api.github.com/repos/{GitHubRepoOwner}/{GitHubRepoName}/releases/latest";
+                AddLog($"  请求: {url}");
+                var resp = await client.GetStringAsync(url);
                 var rel = JsonSerializer.Deserialize<GitHubRelease>(resp);
                 if (rel?.TagName != null && string.Compare(rel.TagName, CurrentVersion, StringComparison.OrdinalIgnoreCase) > 0)
                 {
@@ -633,11 +700,12 @@ namespace leishen
 
         private void TestManualClick_Click(object sender, RoutedEventArgs e)
         {
-            AddLog("=== 测试点击 ===");
-            string[] titles = { "雷神加速器", "雷神加速器 - 加速游戏", "LeiShen", "雷神" };
-            IntPtr hwnd = IntPtr.Zero;
-            foreach (string t in titles) { hwnd = FindWindow(null, t); if (hwnd != IntPtr.Zero) break; }
+            AddLog("=== 枚举窗口 ===");
+            DumpAllWindows();
+            AddLog("=== 查找雷神 ===");
+            IntPtr hwnd = FindLeishenWindow();
             if (hwnd == IntPtr.Zero) { AddLog("未找到雷神加速器窗口"); return; }
+            AddLog("=== 尝试自动点击 ===");
             if (TryUiaClick(hwnd)) AddLog("✅ 自动点击成功");
             else ManualClick(hwnd);
         }
