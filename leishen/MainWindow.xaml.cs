@@ -333,9 +333,19 @@ namespace leishen
         // ======================== 坐标捕获 ========================
         private void StartMouseCapture()
         {
-            SafeUI(() => WindowState = WindowState.Minimized); AddLog("进入鼠标捕获模式");
-            var cw = new CaptureWindow { Owner = this };
-            if (cw.ShowDialog() == true && cw.CapturedPoint.HasValue)
+            AddLog("进入鼠标捕获模式");
+            // 捕获窗口用全屏覆盖模式，不需要最小化主窗口
+            // 直接打开全屏透明捕获窗口，用户点击后自动关闭
+            var cw = new CaptureWindow { Owner = this, WindowStartupLocation = WindowStartupLocation.CenterScreen };
+            cw.ShowInTaskbar = false;
+            // 隐藏主窗口但保持在任务栏
+            SafeUI(() => { Opacity = 0; ShowInTaskbar = true; });
+
+            bool? result = null;
+            try { result = cw.ShowDialog(); }
+            finally { SafeUI(() => { Opacity = 1; ShowInTaskbar = true; Activate(); }); }
+
+            if (result == true && cw.CapturedPoint.HasValue)
             {
                 var pt = new POINT { X = (int)cw.CapturedPoint.Value.X, Y = (int)cw.CapturedPoint.Value.Y };
                 var hwnd = WindowFromPoint(pt);
@@ -347,7 +357,6 @@ namespace leishen
                     else AddLog($"捕获失败：窗口不是雷神加速器 ({title})");
                 }
             }
-            SafeUI(() => WindowState = WindowState.Normal);
         }
 
         private void CaptureCurrentMousePosition()

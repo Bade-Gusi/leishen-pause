@@ -60,6 +60,18 @@ namespace leishen
             base.OnStartup(e);
             CreateDesktopShortcut();
             SetDefaultAutoStart();
+
+            // 确保程序完全退出时杀死所有相关进程
+            Exit += (s, ev) =>
+            {
+                try
+                {
+                    var current = Process.GetCurrentProcess();
+                    foreach (var p in Process.GetProcessesByName(current.ProcessName))
+                        if (p.Id != current.Id) p.Kill();
+                }
+                catch { }
+            };
         }
 
         private void CreateDesktopShortcut()
