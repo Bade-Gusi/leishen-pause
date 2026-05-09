@@ -222,7 +222,17 @@ namespace leishen
             IntPtr hwnd = IntPtr.Zero;
             foreach (string t in titles) { hwnd = FindWindow(null, t); if (hwnd != IntPtr.Zero) break; }
             if (hwnd == IntPtr.Zero) { AddLog(Lang.Get("log_window_not_found")); return; }
-            AddLog($"{Lang.Get("log_window_found")} (句柄: {hwnd})");
+
+            // 安全校验：确认找到的是雷神加速器窗口，绝不是 PUBG
+            var titleBuf = new StringBuilder(256);
+            GetWindowText(hwnd, titleBuf, titleBuf.Capacity);
+            string winTitle = titleBuf.ToString();
+            if (!winTitle.Contains("雷神") && !winTitle.Contains("LeiShen"))
+            {
+                AddLog($"❌ 安全拦截：目标窗口不是雷神加速器 ({winTitle})，跳过操作");
+                return;
+            }
+            AddLog($"{Lang.Get("log_window_found")} (标题: {winTitle})");
 
             if (TryUiaClick(hwnd)) return;
             if (TryFindAnyClickable(hwnd)) return;
