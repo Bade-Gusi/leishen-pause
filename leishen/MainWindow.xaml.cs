@@ -448,53 +448,38 @@ namespace leishen
         // ======================== 主题 ========================
         private void ApplyTheme()
         {
-            var bg = (Color)ColorConverter.ConvertFromString(_isDarkMode ? "#1A1A2E" : "#F5F0EB");
-            var card = (Color)ColorConverter.ConvertFromString(_isDarkMode ? "#16213E" : "#FFFFFF");
-            var border = (Color)ColorConverter.ConvertFromString(_isDarkMode ? "#2A2A4A" : "#DDD5CC");
-            var text = (Color)ColorConverter.ConvertFromString(_isDarkMode ? "#E8E8E8" : "#2D2D2D");
-            var text2 = (Color)ColorConverter.ConvertFromString(_isDarkMode ? "#667788" : "#888888");
-            var textMuted = (Color)ColorConverter.ConvertFromString(_isDarkMode ? "#556677" : "#AAAAAA");
+            // 安全获取颜色，null 时使用默认值
+            Color SafeColor(string hex, Color fallback)
+            {
+                try { var o = ColorConverter.ConvertFromString(hex); return o is Color c ? c : fallback; }
+                catch { return fallback; }
+            }
+            var dark = _isDarkMode;
+            var bg = SafeColor(dark ? "#1A1A2E" : "#F5F0EB", Color.FromRgb(0x1A, 0x1A, 0x2E));
+            var card = SafeColor(dark ? "#16213E" : "#FFFFFF", Color.FromRgb(0x16, 0x21, 0x3E));
+            var border = SafeColor(dark ? "#2A2A4A" : "#DDD5CC", Color.FromRgb(0x2A, 0x2A, 0x4A));
+            var textMain = SafeColor(dark ? "#E8E8E8" : "#2D2D2D", Color.FromRgb(0xE8, 0xE8, 0xE8));
+            var textSec = SafeColor(dark ? "#667788" : "#888888", Color.FromRgb(0x66, 0x77, 0x88));
+            var textMuted = SafeColor(dark ? "#556677" : "#AAAAAA", Color.FromRgb(0x55, 0x66, 0x77));
 
             MainBorder.Background = new SolidColorBrush(bg);
-            TopLine.Background = new SolidColorBrush(_isDarkMode ? Color.FromRgb(0x00, 0xC8, 0x53) : Color.FromRgb(0x66, 0xBB, 0x6A));
-            BtnThemeToggle.Content = _isDarkMode ? "🌙" : "☀️";
-            ChkDarkMode.IsChecked = _isDarkMode;
-            TxtDarkIcon.Text = _isDarkMode ? "🌙" : "☀️";
-            TxtOptDarkmode.Text = Lang.Get(_isDarkMode ? "theme_dark" : "theme_light");
+            TopLine.Background = new SolidColorBrush(dark ? Color.FromRgb(0x00, 0xC8, 0x53) : Color.FromRgb(0x66, 0xBB, 0x6A));
+            BtnThemeToggle.Content = dark ? "🌙" : "☀️";
+            ChkDarkMode.IsChecked = dark;
+            TxtDarkIcon.Text = dark ? "🌙" : "☀️";
+            TxtOptDarkmode.Text = Lang.Get(dark ? "theme_dark" : "theme_light");
+            TxtSectionCoord.Foreground = new SolidColorBrush(textMain);
+            TxtSectionOptions.Foreground = new SolidColorBrush(textMain);
+            TxtSectionLog.Foreground = new SolidColorBrush(textMain);
+            TxtOptAutostart.Foreground = new SolidColorBrush(textMain);
+            TxtOptReminder.Foreground = new SolidColorBrush(textMain);
+            TxtOptDarkmode.Foreground = new SolidColorBrush(textMain);
+            TxtOptUpdate.Foreground = new SolidColorBrush(textMain);
 
-            // 更新所有卡片
             foreach (var cardBorder in new[] { CardStatus, CardCoord, CardOptions, CardLog })
             {
                 cardBorder.Background = new SolidColorBrush(card);
                 cardBorder.BorderBrush = new SolidColorBrush(border);
-            }
-            // 更新所有内嵌背景
-            foreach (var innerBg in FindVisualChildren<System.Windows.Controls.Border>(this))
-            {
-                if (innerBg.Background is SolidColorBrush sb && sb.Color == Color.FromRgb(0x1A, 0x1A, 0x2E))
-                    innerBg.Background = new SolidColorBrush(bg);
-            }
-            // 更新文字颜色
-            foreach (var tb in FindVisualChildren<System.Windows.Controls.TextBlock>(this))
-            {
-                if (tb.Foreground is SolidColorBrush s)
-                {
-                    if (s.Color == Color.FromRgb(0xE8, 0xE8, 0xE8)) tb.Foreground = new SolidColorBrush(text);
-                    else if (s.Color == Color.FromRgb(0xCC, 0xCC, 0xDD)) tb.Foreground = new SolidColorBrush(text);
-                    else if (s.Color == Color.FromRgb(0x66, 0x77, 0x88)) tb.Foreground = new SolidColorBrush(text2);
-                    else if (s.Color == Color.FromRgb(0x55, 0x66, 0x77)) tb.Foreground = new SolidColorBrush(textMuted);
-                }
-            }
-        }
-
-        private System.Collections.Generic.IEnumerable<T> FindVisualChildren<T>(DependencyObject parent) where T : DependencyObject
-        {
-            int count = VisualTreeHelper.GetChildrenCount(parent);
-            for (int i = 0; i < count; i++)
-            {
-                var child = VisualTreeHelper.GetChild(parent, i);
-                if (child is T t) yield return t;
-                foreach (var c in FindVisualChildren<T>(child)) yield return c;
             }
         }
 
