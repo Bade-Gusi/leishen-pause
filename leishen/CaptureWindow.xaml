@@ -8,17 +8,14 @@
         WindowStartupLocation="CenterScreen">
     <Border Background="#80000000">
         <Grid>
-            <!-- 中心准星 -->
             <Ellipse Width="60" Height="60" Stroke="#00E5FF" StrokeThickness="2" Opacity="0.6"/>
             <Ellipse Width="6" Height="6" Fill="#00E5FF" Opacity="0.8"/>
-
-            <!-- 提示面板（底部） -->
             <Border Background="#16213E" CornerRadius="16" Padding="20,16" Opacity="0.95"
                     BorderBrush="#00E5FF" BorderThickness="1"
                     VerticalAlignment="Bottom" Margin="50,0,50,60">
                 <StackPanel>
-                    <TextBlock Text="🎯 点击雷神加速器的【暂停】按钮" FontSize="16" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center"/>
-                    <TextBlock Text="按 ESC 取消 · 仅捕获雷神加速器窗口" FontSize="11" Foreground="#8899AA" HorizontalAlignment="Center" Margin="0,8,0,0"/>
+                    <TextBlock x:Name="TxtCaptureHint" Text="🎯 点击雷神加速器的【暂停】按钮" FontSize="16" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center"/>
+                    <TextBlock x:Name="TxtCaptureEsc" Text="按 ESC 取消 · 仅捕获雷神加速器窗口" FontSize="11" Foreground="#8899AA" HorizontalAlignment="Center" Margin="0,8,0,0"/>
                 </StackPanel>
             </Border>
         </Grid>

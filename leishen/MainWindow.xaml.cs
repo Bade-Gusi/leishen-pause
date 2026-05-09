@@ -611,9 +611,17 @@ namespace leishen
                 Helper.SetText(TxtOptDarkmode, Lang.Get(_isDarkMode ? "theme_dark" : "theme_light"));
                 Helper.SetText(TxtOptUpdate, Lang.Get("opt_check_update"));
                 Helper.SetText(TxtSectionLogDesc, Lang.Get("section_log_desc"));
+                Helper.SetText(TxtSectionCoord, Lang.Get("section_coord"));
+                Helper.SetText(TxtSectionOptions, Lang.Get("section_options"));
+                Helper.SetText(TxtSectionLog, Lang.Get("section_log"));
                 Helper.SetText(TxtFooter, Lang.Get("footer_copyright"));
                 Helper.SetText(TxtQQ, "QQ: 2994938720");
+                Helper.SetText(TxtOptAutostart, Lang.Get("opt_autostart"));
+                Helper.SetText(TxtOptReminder, Lang.Get("opt_reminder"));
+                Helper.SetText(TxtOptUpdate, Lang.Get("opt_check_update"));
                 UpdateStatisticsDisplay();
+                if (StatusText != null)
+                    StatusText.Text = Lang.Get(_isGameRunning ? "status_gaming" : _isMonitoring ? "status_scanning" : "status_idle");
                 if (GameNameText != null)
                     GameNameText.Text = Lang.Get(_isGameRunning ? "status_protecting" : _isMonitoring ? "status_detecting" : "status_waiting");
                 if (BtnStop != null) BtnStop.Content = _isMonitoring ? Lang.Get("btn_stop") : Lang.Get("btn_start");

@@ -1,7 +1,6 @@
 using System;
 using System.Windows;
 using System.Windows.Input;
-using System.Windows.Media.Animation;
 
 namespace leishen
 {
@@ -12,6 +11,15 @@ namespace leishen
         public CaptureWindow()
         {
             InitializeComponent();
+            Loaded += (s, e) => ApplyLanguage();
+        }
+
+        public void ApplyLanguage()
+        {
+            if (TxtCaptureHint != null)
+                TxtCaptureHint.Text = $"🎯 {Lang.Get("capture_hint")}";
+            if (TxtCaptureEsc != null)
+                TxtCaptureEsc.Text = Lang.Get("capture_esc");
         }
 
         private void Window_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
