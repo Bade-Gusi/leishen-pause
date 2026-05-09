@@ -4,7 +4,9 @@
         Title="PUBG助手" Width="440" Height="780"
         MinHeight="640" MinWidth="380" MaxHeight="900"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
-        WindowStartupLocation="CenterScreen" MouseLeftButtonDown="Window_MouseLeftButtonDown">
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="CanResizeWithGrip"
+        MouseLeftButtonDown="Window_MouseLeftButtonDown">
     <Window.Resources>
         <DropShadowEffect x:Key="WindowShadow" BlurRadius="40" Opacity="0.5" ShadowDepth="0" Color="#00C853"/>
         <DropShadowEffect x:Key="CardShadow" BlurRadius="20" Opacity="0.3" ShadowDepth="4" Color="#000000"/>
@@ -35,6 +37,13 @@
         </Storyboard>
         <Storyboard x:Key="SpinAnimation" RepeatBehavior="Forever">
             <DoubleAnimation Storyboard.TargetProperty="RenderTransform.Angle" From="0" To="360" Duration="0:0:1.5"/>
+        </Storyboard>
+
+        <!-- 主题过渡动画 -->
+        <Storyboard x:Key="ThemeTransition">
+            <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0.6" To="1" Duration="0:0:0.3">
+                <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
         </Storyboard>
 
         <Style x:Key="PrimaryButtonStyle" TargetType="Button">
@@ -96,15 +105,24 @@
                         <TextBlock x:Name="TxtAppSubtitle" Text="智能时长暂停工具 · v2.0" FontSize="10" Foreground="#667788" Margin="0,2,0,0"/>
                     </StackPanel>
                     <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Top">
-                        <Button x:Name="BtnLang" Content="EN" Click="BtnLang_Click" Background="Transparent" BorderBrush="Transparent" Foreground="#8899AA" FontSize="11" FontWeight="Bold" Cursor="Hand" Width="32" Height="32" Padding="0" ToolTip="Switch Language">
+                        <!-- 语言选择 -->
+                        <Button x:Name="BtnLang" Content="🌐" Click="BtnLang_Click"
+                                Background="Transparent" BorderBrush="Transparent" Foreground="#8899AA"
+                                FontSize="14" Cursor="Hand" Width="32" Height="32" Padding="0" ToolTip="选择语言">
                             <Button.RenderTransform><ScaleTransform CenterX="16" CenterY="16"/></Button.RenderTransform>
                             <Button.Triggers><EventTrigger RoutedEvent="MouseEnter"><BeginStoryboard Storyboard="{StaticResource BtnScaleEnter}"/></EventTrigger><EventTrigger RoutedEvent="MouseLeave"><BeginStoryboard Storyboard="{StaticResource BtnScaleLeave}"/></EventTrigger></Button.Triggers>
                         </Button>
-                        <Button x:Name="BtnThemeToggle" Content="🌙" Click="ThemeToggle_Click" Background="Transparent" BorderBrush="Transparent" Foreground="#8899AA" FontSize="16" Cursor="Hand" Width="32" Height="32" Padding="0">
+                        <!-- 主题切换 -->
+                        <Button x:Name="BtnThemeToggle" Content="🌙" Click="ThemeToggle_Click"
+                                Background="Transparent" BorderBrush="Transparent" Foreground="#8899AA"
+                                FontSize="14" Cursor="Hand" Width="32" Height="32" Padding="0">
                             <Button.RenderTransform><ScaleTransform CenterX="16" CenterY="16"/></Button.RenderTransform>
                             <Button.Triggers><EventTrigger RoutedEvent="MouseEnter"><BeginStoryboard Storyboard="{StaticResource BtnScaleEnter}"/></EventTrigger><EventTrigger RoutedEvent="MouseLeave"><BeginStoryboard Storyboard="{StaticResource BtnScaleLeave}"/></EventTrigger></Button.Triggers>
                         </Button>
-                        <Button x:Name="BtnClose" Content="✕" Click="Close_Click" Background="Transparent" BorderBrush="Transparent" Foreground="#667788" Cursor="Hand" FontSize="18" Width="32" Height="32" Padding="0" ToolTip="最小化到托盘">
+                        <!-- 关闭（完全退出） -->
+                        <Button x:Name="BtnClose" Content="✕" Click="Close_Click"
+                                Background="Transparent" BorderBrush="Transparent" Foreground="#667788"
+                                Cursor="Hand" FontSize="18" Width="32" Height="32" Padding="0" ToolTip="退出程序">
                             <Button.RenderTransform><ScaleTransform CenterX="16" CenterY="16"/></Button.RenderTransform>
                             <Button.Triggers><EventTrigger RoutedEvent="MouseEnter"><BeginStoryboard Storyboard="{StaticResource BtnScaleEnter}"/></EventTrigger><EventTrigger RoutedEvent="MouseLeave"><BeginStoryboard Storyboard="{StaticResource BtnScaleLeave}"/></EventTrigger></Button.Triggers>
                         </Button>
@@ -112,14 +130,15 @@
                 </Grid>
 
                 <!-- ===== 状态卡片 ===== -->
-                <Border x:Name="CardStatus" Background="#16213E" CornerRadius="20" Padding="0" Margin="0,15,0,0" BorderBrush="#2A2A4A" BorderThickness="1">
+                <Border x:Name="CardStatus" Background="#16213E" CornerRadius="20" Padding="0" Margin="0,15,0,0" BorderBrush="#2A2A4A" BorderThickness="1"
+                        RenderTransformOrigin="0.5,0.5">
                     <Border.Effect><DropShadowEffect BlurRadius="20" Opacity="0.3" ShadowDepth="4" Color="#000000"/></Border.Effect>
                     <Grid Height="160">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="25,0,0,0">
                             <TextBlock x:Name="TxtStatusLabel" Text="状态" FontSize="11" Foreground="#667788" Margin="0,0,0,6"/>
-                            <TextBlock x:Name="StatusText" Text="未运行" FontSize="28" FontWeight="Bold" Foreground="#00C853"/>
-                            <TextBlock x:Name="GameNameText" Text="等待 PUBG 启动..." FontSize="11" Foreground="#556677" Margin="0,8,0,0"/>
+                            <TextBlock x:Name="StatusText" Text="扫描中" FontSize="28" FontWeight="Bold" Foreground="#00E5FF"/>
+                            <TextBlock x:Name="GameNameText" Text="正在检测 PUBG 进程..." FontSize="11" Foreground="#556677" Margin="0,8,0,0"/>
                             <StackPanel Orientation="Horizontal" Margin="0,12,0,0" Opacity="0.7">
                                 <TextBlock x:Name="TxtTodayLabel" Text="今日暂停" FontSize="10" Foreground="#667788"/>
                                 <TextBlock x:Name="TxtTodayCount" Text="0" FontSize="10" FontWeight="Bold" Foreground="#00E5FF" Margin="4,0,0,0"/>
@@ -132,23 +151,21 @@
                             <Ellipse x:Name="StatusRing" Width="100" Height="100" Stroke="#00C853" StrokeThickness="2" Opacity="0.3"/>
                             <Ellipse x:Name="StatusGlow" Width="90" Height="90" Fill="#00C853" Opacity="0.12"><Ellipse.Effect><BlurEffect Radius="30"/></Ellipse.Effect></Ellipse>
                             <Ellipse x:Name="StatusDot" Width="14" Height="14" Fill="#00C853" VerticalAlignment="Center" HorizontalAlignment="Center" Opacity="0.8"/>
-                            <TextBlock x:Name="StatusIcon" Text="⏸" FontSize="28" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#00C853" Opacity="0.6"/>
+                            <TextBlock x:Name="StatusIcon" Text="⟳" FontSize="28" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#00E5FF" Opacity="0.6"/>
                         </Grid>
                     </Grid>
                 </Border>
 
                 <!-- ===== 控制按钮 ===== -->
                 <Grid Margin="0,15,0,0" Height="56">
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                    <Button x:Name="BtnStart" Grid.Column="0" Content="▶ 开始监控" Click="StartMonitor_Click" Cursor="Hand" Height="50" Background="#00C853" Foreground="White" FontWeight="Bold" FontSize="15" Margin="0,0,6,0" Style="{StaticResource PrimaryButtonStyle}">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                    <Button x:Name="BtnStop" Grid.Column="0" Content="⏹ 停止监控" Click="StopMonitor_Click"
+                            Cursor="Hand" Height="50" Background="#C62828" Foreground="White" FontWeight="Bold"
+                            FontSize="15" Style="{StaticResource PrimaryButtonStyle}">
                         <Button.RenderTransform><ScaleTransform CenterX="0.5" CenterY="0.5"/></Button.RenderTransform>
                         <Button.Triggers><EventTrigger RoutedEvent="MouseEnter"><BeginStoryboard Storyboard="{StaticResource BtnScaleEnter}"/></EventTrigger><EventTrigger RoutedEvent="MouseLeave"><BeginStoryboard Storyboard="{StaticResource BtnScaleLeave}"/></EventTrigger></Button.Triggers>
                     </Button>
-                    <Button x:Name="BtnStop" Grid.Column="1" Content="⏹ 停止监控" Click="StopMonitor_Click" Cursor="Hand" Height="50" Background="#333344" Foreground="#667788" FontWeight="Bold" FontSize="15" IsEnabled="False" Style="{StaticResource PrimaryButtonStyle}">
-                        <Button.RenderTransform><ScaleTransform CenterX="0.5" CenterY="0.5"/></Button.RenderTransform>
-                        <Button.Triggers><EventTrigger RoutedEvent="MouseEnter"><BeginStoryboard Storyboard="{StaticResource BtnScaleEnter}"/></EventTrigger><EventTrigger RoutedEvent="MouseLeave"><BeginStoryboard Storyboard="{StaticResource BtnScaleLeave}"/></EventTrigger></Button.Triggers>
-                    </Button>
-                    <Border x:Name="SpinnerBorder" Grid.Column="2" Width="50" Height="50" Margin="8,0,0,0" Visibility="Collapsed">
+                    <Border x:Name="SpinnerBorder" Grid.Column="1" Width="50" Height="50" Margin="8,0,0,0" Visibility="Visible">
                         <Ellipse x:Name="Spinner" Width="24" Height="24" Stroke="#00C853" StrokeThickness="3" StrokeDashArray="20,100" VerticalAlignment="Center" HorizontalAlignment="Center">
                             <Ellipse.RenderTransform><RotateTransform CenterX="12" CenterY="12"/></Ellipse.RenderTransform>
                         </Ellipse>
@@ -167,7 +184,7 @@
                                 <TextBlock x:Name="TxtSectionCoordDesc" Text="配置雷神加速器暂停按钮位置" FontSize="10" Foreground="#556677" Margin="0,2,0,0"/>
                             </StackPanel>
                         </Grid>
-                        <Border Background="#1A1A2E" CornerRadius="12" Padding="12" Margin="0,12,0,5">
+                        <Border x:Name="CoordInnerBg" Background="#1A1A2E" CornerRadius="12" Padding="12" Margin="0,12,0,5">
                             <Grid>
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                                 <TextBlock x:Name="TxtCoordLabel" Text="坐标" VerticalAlignment="Center" Foreground="#8899AA" FontSize="12"/>
@@ -179,11 +196,15 @@
                             </Grid>
                         </Border>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Stretch" Margin="0,8,0,0">
-                            <Button x:Name="BtnCapture" Content="📷 捕获坐标" Click="CaptureCoord_Click" Background="#1A1A2E" Foreground="#00C853" BorderBrush="#00C853" Cursor="Hand" Height="38" FontSize="13" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0">
+                            <Button x:Name="BtnCapture" Content="📷 捕获坐标" Click="CaptureCoord_Click"
+                                    Background="#1A1A2E" Foreground="#00C853" BorderBrush="#00C853" Cursor="Hand"
+                                    Height="38" FontSize="13" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0">
                                 <Button.RenderTransform><ScaleTransform CenterX="0.5" CenterY="0.5"/></Button.RenderTransform>
                                 <Button.Triggers><EventTrigger RoutedEvent="MouseEnter"><BeginStoryboard Storyboard="{StaticResource BtnScaleEnter}"/></EventTrigger><EventTrigger RoutedEvent="MouseLeave"><BeginStoryboard Storyboard="{StaticResource BtnScaleLeave}"/></EventTrigger></Button.Triggers>
                             </Button>
-                            <Button x:Name="BtnTestClick" Content="🔘 测试点击" Click="TestManualClick_Click" Background="#1A1A2E" Foreground="#00E5FF" BorderBrush="#00E5FF" Cursor="Hand" Height="38" FontSize="13" Style="{StaticResource SecondaryButtonStyle}">
+                            <Button x:Name="BtnTestClick" Content="🔘 测试点击" Click="TestManualClick_Click"
+                                    Background="#1A1A2E" Foreground="#00E5FF" BorderBrush="#00E5FF" Cursor="Hand"
+                                    Height="38" FontSize="13" Style="{StaticResource SecondaryButtonStyle}">
                                 <Button.RenderTransform><ScaleTransform CenterX="0.5" CenterY="0.5"/></Button.RenderTransform>
                                 <Button.Triggers><EventTrigger RoutedEvent="MouseEnter"><BeginStoryboard Storyboard="{StaticResource BtnScaleEnter}"/></EventTrigger><EventTrigger RoutedEvent="MouseLeave"><BeginStoryboard Storyboard="{StaticResource BtnScaleLeave}"/></EventTrigger></Button.Triggers>
                             </Button>
@@ -206,7 +227,7 @@
                         </Grid>
                         <Grid Margin="0,12,0,0">
                             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-                            <Border Background="#1A1A2E" CornerRadius="12" Padding="12,10" Margin="0,0,0,6">
+                            <Border x:Name="Opt1Bg" Background="#1A1A2E" CornerRadius="12" Padding="12,10" Margin="0,0,0,6">
                                 <Grid>
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                     <TextBlock Text="🚀" FontSize="14" VerticalAlignment="Center"/>
@@ -214,7 +235,7 @@
                                     <CheckBox x:Name="ChkAutoStart" Grid.Column="2" Checked="AutoStart_Checked" Unchecked="AutoStart_Unchecked" Foreground="#00C853" VerticalAlignment="Center"/>
                                 </Grid>
                             </Border>
-                            <Border Background="#1A1A2E" CornerRadius="12" Padding="12,10" Margin="0,0,0,6">
+                            <Border x:Name="Opt2Bg" Background="#1A1A2E" CornerRadius="12" Padding="12,10" Margin="0,0,0,6">
                                 <Grid>
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                     <TextBlock Text="🔔" FontSize="14" VerticalAlignment="Center"/>
@@ -222,7 +243,7 @@
                                     <CheckBox x:Name="ChkShowReminder" Grid.Column="2" IsChecked="True" Foreground="#00C853" VerticalAlignment="Center"/>
                                 </Grid>
                             </Border>
-                            <Border Background="#1A1A2E" CornerRadius="12" Padding="12,10" Margin="0,0,0,6">
+                            <Border x:Name="Opt3Bg" Background="#1A1A2E" CornerRadius="12" Padding="12,10" Margin="0,0,0,6">
                                 <Grid>
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                     <TextBlock x:Name="TxtDarkIcon" Text="🌙" FontSize="14" VerticalAlignment="Center"/>
@@ -230,13 +251,15 @@
                                     <CheckBox x:Name="ChkDarkMode" Grid.Column="2" IsChecked="True" Checked="DarkMode_Toggled" Unchecked="DarkMode_Toggled" Foreground="#00C853" VerticalAlignment="Center"/>
                                 </Grid>
                             </Border>
-                            <Border Background="#1A1A2E" CornerRadius="12" Padding="12,10">
+                            <Border x:Name="Opt4Bg" Background="#1A1A2E" CornerRadius="12" Padding="12,10">
                                 <Grid>
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                     <TextBlock Text="🔄" FontSize="14" VerticalAlignment="Center"/>
                                     <TextBlock x:Name="TxtOptUpdate" Grid.Column="1" Text="检查更新" Foreground="#CCCCDD" FontSize="12" Margin="10,0,0,0" VerticalAlignment="Center"/>
                                     <Border CornerRadius="10" Background="#00C853" Height="28" Width="60">
-                                        <Button x:Name="BtnCheckUpdate" Content="检查" Click="CheckUpdate_Click" Background="Transparent" Foreground="White" FontSize="11" FontWeight="Bold" BorderThickness="0" Cursor="Hand" Padding="0"/>
+                                        <Button x:Name="BtnCheckUpdate" Content="检查" Click="CheckUpdate_Click"
+                                                Background="Transparent" Foreground="White" FontSize="11" FontWeight="Bold"
+                                                BorderThickness="0" Cursor="Hand" Padding="0"/>
                                     </Border>
                                 </Grid>
                             </Border>
@@ -256,10 +279,13 @@
                                 <TextBlock x:Name="TxtSectionLogDesc" Text="实时记录所有操作" FontSize="10" Foreground="#556677" Margin="0,2,0,0"/>
                             </StackPanel>
                             <Border Grid.Column="2" CornerRadius="10" BorderBrush="#444455" BorderThickness="1" Height="26" Width="50">
-                                <Button x:Name="BtnClearLog" Content="清空" Click="ClearLog_Click" Background="Transparent" Foreground="#667788" FontSize="11" BorderBrush="Transparent" BorderThickness="0" Cursor="Hand" Padding="0"/>
+                                <Button x:Name="BtnClearLog" Content="清空" Click="ClearLog_Click"
+                                        Background="Transparent" Foreground="#667788" FontSize="11"
+                                        BorderBrush="Transparent" BorderThickness="0" Cursor="Hand" Padding="0"/>
                             </Border>
                         </Grid>
-                        <ListBox x:Name="LogList" Height="140" Background="#1A1A2E" BorderBrush="#2A2A4A" BorderThickness="1" Margin="0,10,0,0" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                        <ListBox x:Name="LogList" Height="140" Background="#1A1A2E" BorderBrush="#2A2A4A"
+                                 BorderThickness="1" Margin="0,10,0,0" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
                                     <TextBlock Text="{Binding}" FontSize="10" Foreground="#8899AA" TextWrapping="Wrap" FontFamily="Consolas"/>
@@ -269,27 +295,18 @@
                     </StackPanel>
                 </Border>
 
-                <!-- ===== 页脚 + 退出按钮 ===== -->
-                <Grid Margin="0,18,0,0">
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0" HorizontalAlignment="Left">
-                        <TextBlock x:Name="TxtFooter" Text="© 巴德古斯 设计" FontSize="10" Foreground="#556677"/>
-                        <TextBlock x:Name="TxtQQ" Text="QQ: 2994938720" FontSize="9" Foreground="#3A3A4A" Margin="0,2,0,0"/>
-                        <TextBlock x:Name="TxtVersionInfo" Text="v2.0" FontSize="9" Foreground="#3A3A4A" Margin="0,2,0,0"/>
-                    </StackPanel>
-                    <Border Grid.Column="1" CornerRadius="12" Background="#CC0000" Height="32" Width="100">
-                        <Button x:Name="BtnQuit" Content="✕ 退出程序" Click="BtnQuit_Click"
-                                Background="Transparent" Foreground="White" FontSize="11" FontWeight="Bold"
-                                BorderThickness="0" Cursor="Hand" ToolTip="完全退出程序">
-                            <Button.RenderTransform><ScaleTransform CenterX="50" CenterY="16"/></Button.RenderTransform>
-                            <Button.Triggers>
-                                <EventTrigger RoutedEvent="MouseEnter"><BeginStoryboard Storyboard="{StaticResource BtnScaleEnter}"/></EventTrigger>
-                                <EventTrigger RoutedEvent="MouseLeave"><BeginStoryboard Storyboard="{StaticResource BtnScaleLeave}"/></EventTrigger>
-                            </Button.Triggers>
-                        </Button>
-                    </Border>
-                </Grid>
+                <!-- ===== 页脚 ===== -->
+                <StackPanel Margin="0,18,0,0">
+                    <Rectangle Height="1" Fill="#2A2A4A" Margin="20,0,20,10" Opacity="0.5"/>
+                    <TextBlock x:Name="TxtFooter" Text="© 巴德古斯 设计" HorizontalAlignment="Center" FontSize="10" Foreground="#556677"/>
+                    <TextBlock x:Name="TxtQQ" Text="QQ: 2994938720" HorizontalAlignment="Center" FontSize="9" Foreground="#3A3A4A" Margin="0,2,0,0"/>
+                    <TextBlock x:Name="TxtVersionInfo" Text="v2.0" HorizontalAlignment="Center" FontSize="9" Foreground="#3A3A4A" Margin="0,2,0,0"/>
+                </StackPanel>
+
+                <!-- ===== 缩放手柄 ===== -->
+                <Border CornerRadius="0,0,28,28" Height="8" Margin="-15,0" Background="Transparent" VerticalAlignment="Bottom"/>
             </StackPanel>
         </Grid>
     </Border>
+
 </Window>
