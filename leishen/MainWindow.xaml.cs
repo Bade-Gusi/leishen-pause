@@ -395,10 +395,20 @@ namespace leishen
         }
         private void UpdateStatisticsDisplay()
         {
-            TxtTodayCount.Text = _todayPauseCount.ToString();
-            int sm = _totalPauseCount * 60;
-            TxtSavedTime.Text = sm >= 60 ? $"{sm / 60}h{sm % 60}m" : $"{sm} {Lang.Get("minutes")}";
-            TxtVersionInfo.Text = string.Format(Lang.Get("footer_stats"), _sessionCount, _totalPauseCount);
+            try
+            {
+                if (!Dispatcher.CheckAccess()) { Dispatcher.Invoke(UpdateStatisticsDisplay); return; }
+                if (TxtTodayCount != null) TxtTodayCount.Text = _todayPauseCount.ToString();
+                int sm = _totalPauseCount * 60;
+                if (TxtSavedTime != null)
+                    TxtSavedTime.Text = sm >= 60 ? $"{sm / 60}h{sm % 60}m" : $"{sm} {Lang.Get("minutes")}";
+                if (TxtVersionInfo != null)
+                    TxtVersionInfo.Text = string.Format(Lang.Get("footer_stats"), _sessionCount, _totalPauseCount);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"UpdateStatisticsDisplay error: {ex.Message}");
+            }
         }
 
         // ======================== 检查更新 ========================
