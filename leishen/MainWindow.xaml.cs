@@ -655,9 +655,17 @@ namespace leishen
             AddLog("正在检查更新...");
             try
             {
-                using var client = new System.Net.Http.HttpClient();
+                // 使用系统代理设置（自动适配 IE/Windows 代理配置）
+                var handler = new System.Net.Http.HttpClientHandler
+                {
+                    // 自动使用系统代理（大多数代理软件会设置系统代理）
+                    UseProxy = true,
+                    // 如果直连失败，自动使用默认代理
+                    Proxy = System.Net.Http.HttpClient.DefaultProxy
+                };
+                using var client = new System.Net.Http.HttpClient(handler);
                 client.DefaultRequestHeaders.UserAgent.ParseAdd("PUBGMonitor/2.0");
-                client.Timeout = TimeSpan.FromSeconds(10);
+                client.Timeout = TimeSpan.FromSeconds(15);
 
                 string url = $"https://api.github.com/repos/{GitHubRepoOwner}/{GitHubRepoName}/releases/latest";
                 var response = await client.GetStringAsync(url);
