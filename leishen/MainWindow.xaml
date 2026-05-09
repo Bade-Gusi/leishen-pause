@@ -33,9 +33,7 @@
         </Storyboard>
         <!-- 状态圆环旋转 -->
         <Storyboard x:Key="SpinRing" RepeatBehavior="Forever">
-            <DoubleAnimation Storyboard.TargetProperty="RenderTransform.Angle" From="0" To="360" Duration="0:0:2">
-                <DoubleAnimation.EasingFunction><LinearEasingFunction/></DoubleAnimation.EasingFunction>
-            </DoubleAnimation>
+            <DoubleAnimation Storyboard.TargetProperty="RenderTransform.Angle" From="0" To="360" Duration="0:0:2"/>
         </Storyboard>
         <!-- 加载旋转 -->
         <Storyboard x:Key="SpinAnimation" RepeatBehavior="Forever">
