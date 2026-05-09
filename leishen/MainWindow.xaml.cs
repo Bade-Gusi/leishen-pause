@@ -151,7 +151,7 @@ namespace leishen
         }
 
         // ======================== 状态 ========================
-        private void SetStatus(string textKey, string colorHex, string icon, bool pulseRing = false)
+        private void SetStatus(string textKey, string colorHex, string icon, bool isGaming = false)
         {
             SafeUI(() => {
                 if (StatusText != null) StatusText.Text = Lang.Get(textKey);
@@ -162,11 +162,30 @@ namespace leishen
                 if (StatusRing != null) StatusRing.Stroke = rc;
                 if (StatusGlow != null) StatusGlow.Fill = rc;
                 if (StatusDot != null) StatusDot.Fill = rc;
+
                 var pulse = Resources["PulseGlow"] as Storyboard;
-                if (pulseRing) { pulse?.Begin(StatusRing); pulse?.Begin(StatusGlow); }
-                else { pulse?.Stop(StatusRing); pulse?.Stop(StatusGlow);
-                    if (StatusRing != null) StatusRing.Opacity = 0.3;
-                    if (StatusGlow != null) StatusGlow.Opacity = 0.12; }
+                var spinRing = Resources["SpinRing"] as Storyboard;
+
+                // 停止所有动画先
+                pulse?.Stop(StatusGlow);
+                spinRing?.Stop(StatusRing);
+                if (StatusRing != null) { StatusRing.Opacity = 0.2; StatusRing.RenderTransform = new RotateTransform(0); }
+                if (StatusGlow != null) StatusGlow.Opacity = 0.1;
+                if (StatusDot != null) StatusDot.Opacity = 0.9;
+
+                if (isGaming)
+                {
+                    // 游戏中：光晕脉冲
+                    pulse?.Begin(StatusGlow);
+                    if (StatusRing != null) StatusRing.Opacity = 0.4;
+                    if (StatusGlow != null) StatusGlow.Opacity = 0.25;
+                }
+                else if (icon == "⟳")
+                {
+                    // 扫描中：圆环旋转
+                    spinRing?.Begin(StatusRing);
+                    if (StatusGlow != null) StatusGlow.Opacity = 0.05;
+                }
             });
         }
 
@@ -370,16 +389,27 @@ namespace leishen
         private void StartMouseCapture()
         {
             AddLog("进入鼠标捕获模式");
-            // 捕获窗口用全屏覆盖模式，不需要最小化主窗口
-            // 直接打开全屏透明捕获窗口，用户点击后自动关闭
-            var cw = new CaptureWindow { Owner = this, WindowStartupLocation = WindowStartupLocation.CenterScreen };
+            // 直接打开全屏捕获窗口，主窗口保持在后面但不禁用
+            var cw = new CaptureWindow();
+            cw.Owner = this;
+            cw.WindowStartupLocation = WindowStartupLocation.CenterScreen;
             cw.ShowInTaskbar = false;
-            // 隐藏主窗口但保持在任务栏
-            SafeUI(() => { Opacity = 0; ShowInTaskbar = true; });
+            // 把主窗口置后，让捕获窗口在最前
+            SafeUI(() => { Topmost = false; });
 
             bool? result = null;
-            try { result = cw.ShowDialog(); }
-            finally { SafeUI(() => { Opacity = 1; ShowInTaskbar = true; Activate(); }); }
+            try
+            {
+                result = cw.ShowDialog();
+            }
+            finally
+            {
+                SafeUI(() => {
+                    Topmost = false;
+                    Activate();
+                    Focus();
+                });
+            }
 
             if (result == true && cw.CapturedPoint.HasValue)
             {
