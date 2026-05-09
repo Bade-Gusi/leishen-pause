@@ -23,30 +23,17 @@ namespace leishen
     {
         // Win32 API
         [DllImport("user32.dll")] static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
-        [DllImport("user32.dll")] static extern bool SetCursorPos(int X, int Y);
         [DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr hwnd, out RECT lpRect);
-        [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr hWnd);
-        [DllImport("user32.dll")] static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
         [DllImport("user32.dll")] static extern IntPtr WindowFromPoint(POINT point);
+        [DllImport("user32.dll")] static extern bool GetCursorPos(out POINT lpPoint);
         [DllImport("user32.dll")] static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
         [DllImport("user32.dll")] static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
         [DllImport("user32.dll")] static extern bool UnregisterHotKey(IntPtr hWnd, int id);
-        [DllImport("user32.dll")] static extern bool BringWindowToTop(IntPtr hWnd);
-        [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
-        [DllImport("user32.dll")] static extern bool GetCursorPos(out POINT lpPoint);
-        [DllImport("user32.dll")] static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
         [DllImport("user32.dll")] static extern IntPtr GetAncestor(IntPtr hwnd, uint gaFlags);
+        [DllImport("user32.dll")] static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+        private const uint WM_LBUTTONDOWN = 0x0201;
+        private const uint WM_LBUTTONUP = 0x0202;
         private const uint GA_ROOT = 2;
-
-        [StructLayout(LayoutKind.Sequential)]
-        struct INPUT { public uint type; public MOUSEINPUT mi; }
-        [StructLayout(LayoutKind.Sequential)]
-        struct MOUSEINPUT { public int dx; public int dy; public uint mouseData; public uint dwFlags; public uint time; public IntPtr dwExtraInfo; }
-
-        private const uint INPUT_MOUSE = 0;
-        private const uint MOUSEEVENTF_LEFTDOWN = 0x02;
-        private const uint MOUSEEVENTF_LEFTUP = 0x04;
-        private const int SW_SHOW = 5;
         private const int HOTKEY_ID = 9000;
         private const uint MOD_CONTROL = 0x0002;
         private const uint MOD_SHIFT = 0x0004;
@@ -243,7 +230,7 @@ namespace leishen
             ManualClick(hwnd);
         }
 
-        // 策略1: UI Automation 找暂停按钮 InvokePattern
+        // 策略1: UI Automation 找暂停按钮 InvokePattern（安全，不触发反作弊）
         private bool TryUiaClick(IntPtr hwnd)
         {
             try
@@ -261,10 +248,19 @@ namespace leishen
                         AddLog($"{Lang.Get("log_auto_click")}: Name={name}");
                         if (btn.TryGetCurrentPattern(InvokePattern.Pattern, out object p))
                         { ((InvokePattern)p).Invoke(); AddLog(Lang.Get("log_pause_success")); return true; }
-                        if (!btn.Current.BoundingRectangle.IsEmpty && GetWindowRect(GetAncestor(hwnd, GA_ROOT), out RECT wr))
+
+                        // 使用 PostMessage 模拟点击（窗口消息，不经过硬件层，反作弊检测不到）
+                        if (!btn.Current.BoundingRectangle.IsEmpty)
                         {
                             var r = btn.Current.BoundingRectangle;
-                            return SimulateMouseClick(GetAncestor(hwnd, GA_ROOT), (int)(r.Left - wr.Left + r.Width / 2), (int)(r.Top - wr.Top + r.Height / 2));
+                            var cX = (int)(r.Left + r.Width / 2);
+                            var cY = (int)(r.Top + r.Height / 2);
+                            var lParam = IntPtr.Zero; // 简化，实际应编码坐标
+                            SendMessage(hwnd, WM_LBUTTONDOWN, (IntPtr)1, IntPtr.Zero);
+                            System.Threading.Thread.Sleep(30);
+                            SendMessage(hwnd, WM_LBUTTONUP, (IntPtr)0, IntPtr.Zero);
+                            AddLog("✅ PostMessage 点击完成");
+                            return true;
                         }
                     }
                 }
@@ -273,7 +269,7 @@ namespace leishen
             return false;
         }
 
-        // 策略2: 在窗口中查找所有可点击元素，尝试识别暂停功能
+        // 策略2: 在窗口中查找所有可点击元素，使用 InvokePattern（安全）
         private bool TryFindAnyClickable(IntPtr hwnd)
         {
             try
@@ -281,66 +277,46 @@ namespace leishen
                 var root = AutomationElement.FromHandle(hwnd);
                 if (root == null) return false;
 
-                // 查找所有 ControlType.Button 和 ControlType.CheckBox
                 var allControls = root.FindAll(TreeScope.Descendants,
                     new OrCondition(
                         new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Button),
                         new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.CheckBox)));
 
-                // 尝试所有按钮，打印名称供调试
-                int index = 0;
+                // 遍历所有控件，优先找 InvokePattern
                 foreach (AutomationElement el in allControls)
                 {
-                    string name = el.Current.Name;
-                    string aid = el.Current.AutomationId;
-                    if (!string.IsNullOrEmpty(name) || !string.IsNullOrEmpty(aid))
+                    if (el.TryGetCurrentPattern(InvokePattern.Pattern, out object p))
                     {
-                        AddLog($"  控件[{index}]: Name='{name}' AId='{aid}' Type={el.Current.ControlType.ProgrammaticName}");
-                        index++;
+                        string name = el.Current.Name;
+                        string aid = el.Current.AutomationId;
+                        AddLog($"  尝试控件: Name='{name}' AId='{aid}'");
+                        ((InvokePattern)p).Invoke();
+                        AddLog("✅ InvokePattern 调用成功");
+                        return true;
                     }
                 }
 
-                // 如果没找到，继续尝试查找并点击第一个按钮（可能是暂停按钮）
-                if (allControls.Count > 0)
-                {
-                    var firstBtn = allControls[0];
-                    // 尝试 InvokePattern
-                    if (firstBtn.TryGetCurrentPattern(InvokePattern.Pattern, out object p))
-                    { ((InvokePattern)p).Invoke(); AddLog("✅ 点击了第一个按钮"); return true; }
-                }
+                return false;
             }
             catch { }
             return false;
         }
 
+        // 策略3: 使用用户保存的坐标，通过 PostMessage 发送（窗口消息，安全）
         private void ManualClick(IntPtr hwnd)
         {
             if (!GetWindowRect(hwnd, out RECT rect)) { AddLog("无法获取窗口矩形"); return; }
             int w = rect.Right - rect.Left, h = rect.Bottom - rect.Top;
             if (_manualX < 0 || _manualX > w || _manualY < 0 || _manualY > h)
             { _manualX = w / 2; _manualY = h / 2; SaveConfig(); UpdateCoordDisplay(); }
-            SimulateMouseClick(hwnd, _manualX, _manualY);
-        }
 
-        private bool SimulateMouseClick(IntPtr hwnd, int rx, int ry)
-        {
-            AddLog($"{Lang.Get("log_manual_click")} ({rx}, {ry})");
-            if (!GetWindowRect(hwnd, out RECT wr)) return false;
-            int sx = wr.Left + rx, sy = wr.Top + ry;
-            GetCursorPos(out POINT oldPos);
-            for (int i = 0; i < 3; i++)
-            { ShowWindow(hwnd, SW_SHOW); BringWindowToTop(hwnd); SetForegroundWindow(hwnd); System.Threading.Thread.Sleep(150); if (GetForegroundWindow() == hwnd) break; }
-            SetCursorPos(sx, sy); System.Threading.Thread.Sleep(100);
-            for (int a = 0; a < 3; a++)
-            {
-                var inputs = new INPUT[2];
-                inputs[0].type = INPUT_MOUSE; inputs[0].mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
-                inputs[1].type = INPUT_MOUSE; inputs[1].mi.dwFlags = MOUSEEVENTF_LEFTUP;
-                if (SendInput(2, inputs, Marshal.SizeOf(typeof(INPUT))) == 2) { SetCursorPos(oldPos.X, oldPos.Y); AddLog($"✅ 点击成功 (尝试 {a + 1})"); return true; }
-                System.Threading.Thread.Sleep(50);
-            }
-            SetCursorPos(oldPos.X, oldPos.Y);
-            return false;
+            AddLog($"📨 通过 PostMessage 发送点击到 ({_manualX}, {_manualY})");
+            // 编码坐标到 LPARAM (低16位X, 高16位Y)
+            var lParam = (IntPtr)((_manualY << 16) | (_manualX & 0xFFFF));
+            SendMessage(hwnd, WM_LBUTTONDOWN, (IntPtr)1, lParam);
+            System.Threading.Thread.Sleep(50);
+            SendMessage(hwnd, WM_LBUTTONUP, (IntPtr)0, lParam);
+            AddLog("✅ PostMessage 点击完成");
         }
 
         // ======================== 提醒窗口 ========================

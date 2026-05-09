@@ -1,8 +1,8 @@
 <Window x:Class="leishen.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="PUBG助手" Width="440" SizeToContent="Height"
-        MaxHeight="900" MinHeight="640" MinWidth="380"
+        Title="PUBG助手" Width="440" Height="780"
+        MinHeight="640" MinWidth="380" MaxHeight="900"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         WindowStartupLocation="CenterScreen" MouseLeftButtonDown="Window_MouseLeftButtonDown">
     <Window.Resources>
