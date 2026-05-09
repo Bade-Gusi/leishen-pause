@@ -4,7 +4,7 @@
 
 - **作者**: 巴德古斯
 - **QQ**: 2994938720
-- **GitHub**: [Bade-Gusi/雷神时常暂停](https://github.com/Bade-Gusi/雷神时常暂停)
+- **GitHub**: [Bade-Gusi/leishen-pause](https://github.com/Bade-Gusi/leishen-pause)
 
 ## 功能特性
 

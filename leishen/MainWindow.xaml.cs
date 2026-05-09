@@ -647,7 +647,7 @@ namespace leishen
         // ======================== 检查更新（从 GitHub Releases） ========================
         // ⚠ 请将下面的 repoOwner 和 repoName 替换为你自己的 GitHub 仓库信息
         private const string GitHubRepoOwner = "Bade-Gusi";
-        private const string GitHubRepoName = "雷神时常暂停";
+        private const string GitHubRepoName = "leishen-pause";
         private const string CurrentVersion = "v2.0";
 
         private async Task CheckForUpdatesAsync()
