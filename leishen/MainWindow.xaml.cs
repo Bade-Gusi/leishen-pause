@@ -469,7 +469,8 @@ namespace leishen
         // ======================== 主题 ========================
         private void ApplyTheme()
         {
-            // 安全获取颜色，null 时使用默认值
+            if (!Dispatcher.CheckAccess()) { Dispatcher.Invoke(ApplyTheme); return; }
+
             Color SafeColor(string hex, Color fallback)
             {
                 try { var o = ColorConverter.ConvertFromString(hex); return o is Color c ? c : fallback; }
@@ -480,61 +481,72 @@ namespace leishen
             var card = SafeColor(dark ? "#16213E" : "#FFFFFF", Color.FromRgb(0x16, 0x21, 0x3E));
             var border = SafeColor(dark ? "#2A2A4A" : "#DDD5CC", Color.FromRgb(0x2A, 0x2A, 0x4A));
             var textMain = SafeColor(dark ? "#E8E8E8" : "#2D2D2D", Color.FromRgb(0xE8, 0xE8, 0xE8));
-            var textSec = SafeColor(dark ? "#667788" : "#888888", Color.FromRgb(0x66, 0x77, 0x88));
-            var textMuted = SafeColor(dark ? "#556677" : "#AAAAAA", Color.FromRgb(0x55, 0x66, 0x77));
 
-            MainBorder.Background = new SolidColorBrush(bg);
-            TopLine.Background = new SolidColorBrush(dark ? Color.FromRgb(0x00, 0xC8, 0x53) : Color.FromRgb(0x66, 0xBB, 0x6A));
-            BtnThemeToggle.Content = dark ? "🌙" : "☀️";
-            ChkDarkMode.IsChecked = dark;
-            TxtDarkIcon.Text = dark ? "🌙" : "☀️";
-            TxtOptDarkmode.Text = Lang.Get(dark ? "theme_dark" : "theme_light");
-            TxtSectionCoord.Foreground = new SolidColorBrush(textMain);
-            TxtSectionOptions.Foreground = new SolidColorBrush(textMain);
-            TxtSectionLog.Foreground = new SolidColorBrush(textMain);
-            TxtOptAutostart.Foreground = new SolidColorBrush(textMain);
-            TxtOptReminder.Foreground = new SolidColorBrush(textMain);
-            TxtOptDarkmode.Foreground = new SolidColorBrush(textMain);
-            TxtOptUpdate.Foreground = new SolidColorBrush(textMain);
-
-            foreach (var cardBorder in new[] { CardStatus, CardCoord, CardOptions, CardLog })
+            try
             {
-                cardBorder.Background = new SolidColorBrush(card);
-                cardBorder.BorderBrush = new SolidColorBrush(border);
+                if (MainBorder != null) MainBorder.Background = new SolidColorBrush(bg);
+                if (TopLine != null) TopLine.Background = new SolidColorBrush(dark ? Color.FromRgb(0x00, 0xC8, 0x53) : Color.FromRgb(0x66, 0xBB, 0x6A));
+                if (BtnThemeToggle != null) BtnThemeToggle.Content = dark ? "🌙" : "☀️";
+                if (ChkDarkMode != null) ChkDarkMode.IsChecked = dark;
+                if (TxtDarkIcon != null) TxtDarkIcon.Text = dark ? "🌙" : "☀️";
+                if (TxtOptDarkmode != null) TxtOptDarkmode.Text = Lang.Get(dark ? "theme_dark" : "theme_light");
+
+                foreach (var x in new[] { TxtSectionCoord, TxtSectionOptions, TxtSectionLog,
+                    TxtOptAutostart, TxtOptReminder, TxtOptDarkmode, TxtOptUpdate })
+                { if (x != null) x.Foreground = new SolidColorBrush(textMain); }
+
+                foreach (var c in new[] { CardStatus, CardCoord, CardOptions, CardLog })
+                {
+                    if (c == null) continue;
+                    c.Background = new SolidColorBrush(card);
+                    c.BorderBrush = new SolidColorBrush(border);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"ApplyTheme error: {ex.Message}");
             }
         }
 
         // ======================== 语言 ========================
         private void ApplyLanguage()
         {
-            // 切换 XAML 中所有绑定的文字
-            TxtAppTitle.Text = Lang.Get("app_title");
-            TxtAppSubtitle.Text = $"{(Lang.CurrentLang == "zh" ? "智能时长暂停工具" : "Smart Pause Tool")} · {Lang.Get("app_version")}";
-            TxtStatusLabel.Text = Lang.Get("status_label");
-            TxtTodayLabel.Text = Lang.Get("today_pause");
-            TxtSavedLabel.Text = Lang.Get("saved");
-            BtnStart.Content = Lang.Get("btn_start");
-            BtnStop.Content = Lang.Get("btn_stop");
-            BtnCapture.Content = Lang.Get("btn_capture");
-            BtnTestClick.Content = Lang.Get("btn_test");
-            BtnCheckUpdate.Content = Lang.Get("btn_check_update");
-            BtnClearLog.Content = Lang.Get("btn_clear_log");
-            BtnQuit.Content = Lang.Get("btn_quit");
-            TxtSectionCoordDesc.Text = Lang.Get("section_coord_desc");
-            TxtCoordLabel.Text = Lang.Get("coord_label");
-            TxtCoordHint.Text = Lang.Get("coord_hint");
-            TxtSectionOptionsDesc.Text = Lang.Get("section_options_desc");
-            TxtOptAutostart.Text = Lang.Get("opt_autostart");
-            TxtOptReminder.Text = Lang.Get("opt_reminder");
-            TxtOptDarkmode.Text = Lang.Get(_isDarkMode ? "theme_dark" : "theme_light");
-            TxtOptUpdate.Text = Lang.Get("opt_check_update");
-            TxtSectionLogDesc.Text = Lang.Get("section_log_desc");
-            TxtFooter.Text = Lang.Get("footer_copyright");
-            TxtQQ.Text = "QQ: 2994938720";
-            UpdateStatisticsDisplay();
-            BtnLang.Content = Lang.CurrentLang == "zh" ? "EN" : "中";
-            BtnLang.ToolTip = Lang.CurrentLang == "zh" ? "Switch Language" : "切换语言";
-            GameNameText.Text = Lang.Get(_isGameRunning ? "status_protecting" : _isMonitoring ? "status_detecting" : "status_waiting");
+            try
+            {
+                if (!Dispatcher.CheckAccess()) { Dispatcher.Invoke(ApplyLanguage); return; }
+                Helper.SetText(TxtAppTitle, Lang.Get("app_title"));
+                Helper.SetText(TxtAppSubtitle, $"{(Lang.CurrentLang == "zh" ? "智能时长暂停工具" : "Smart Pause Tool")} · {Lang.Get("app_version")}");
+                Helper.SetText(TxtStatusLabel, Lang.Get("status_label"));
+                Helper.SetText(TxtTodayLabel, Lang.Get("today_pause"));
+                Helper.SetText(TxtSavedLabel, Lang.Get("saved"));
+                Helper.SetContent(BtnStart, Lang.Get("btn_start"));
+                Helper.SetContent(BtnStop, Lang.Get("btn_stop"));
+                Helper.SetContent(BtnCapture, Lang.Get("btn_capture"));
+                Helper.SetContent(BtnTestClick, Lang.Get("btn_test"));
+                Helper.SetContent(BtnCheckUpdate, Lang.Get("btn_check_update"));
+                Helper.SetContent(BtnClearLog, Lang.Get("btn_clear_log"));
+                Helper.SetContent(BtnQuit, Lang.Get("btn_quit"));
+                Helper.SetText(TxtSectionCoordDesc, Lang.Get("section_coord_desc"));
+                Helper.SetText(TxtCoordLabel, Lang.Get("coord_label"));
+                Helper.SetText(TxtCoordHint, Lang.Get("coord_hint"));
+                Helper.SetText(TxtSectionOptionsDesc, Lang.Get("section_options_desc"));
+                Helper.SetText(TxtOptAutostart, Lang.Get("opt_autostart"));
+                Helper.SetText(TxtOptReminder, Lang.Get("opt_reminder"));
+                Helper.SetText(TxtOptDarkmode, Lang.Get(_isDarkMode ? "theme_dark" : "theme_light"));
+                Helper.SetText(TxtOptUpdate, Lang.Get("opt_check_update"));
+                Helper.SetText(TxtSectionLogDesc, Lang.Get("section_log_desc"));
+                Helper.SetText(TxtFooter, Lang.Get("footer_copyright"));
+                Helper.SetText(TxtQQ, "QQ: 2994938720");
+                UpdateStatisticsDisplay();
+                Helper.SetContent(BtnLang, Lang.CurrentLang == "zh" ? "EN" : "中");
+                if (BtnLang != null) BtnLang.ToolTip = Lang.CurrentLang == "zh" ? "Switch Language" : "切换语言";
+                if (GameNameText != null)
+                    GameNameText.Text = Lang.Get(_isGameRunning ? "status_protecting" : _isMonitoring ? "status_detecting" : "status_waiting");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"ApplyLanguage error: {ex.Message}");
+            }
         }
 
         // ======================== 事件 ========================
@@ -597,6 +609,15 @@ namespace leishen
             try { using var key = Registry.CurrentUser.OpenSubKey(REG_RUN_PATH); if (key != null) ChkAutoStart.IsChecked = !string.IsNullOrEmpty(key.GetValue(APP_NAME) as string); }
             catch { }
         }
+    }
+
+    // null 安全辅助类
+    public static class Helper
+    {
+        public static void SetText(System.Windows.Controls.TextBlock? tb, string text)
+        { if (tb != null) tb.Text = text; }
+        public static void SetContent(System.Windows.Controls.Button? btn, object content)
+        { if (btn != null) btn.Content = content; }
     }
 
     // 数据模型
