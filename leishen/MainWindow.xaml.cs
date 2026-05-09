@@ -425,7 +425,28 @@ namespace leishen
             AddLog(Lang.Get("log_update_checking"));
             try
             {
-                var handler = new System.Net.Http.HttpClientHandler { UseProxy = true, Proxy = System.Net.Http.HttpClient.DefaultProxy };
+                var handler = new System.Net.Http.HttpClientHandler();
+                // 尝试使用代理 (Clash 默认端口 7897, 也尝试常见端口)
+                try
+                {
+                    var proxyUri = new Uri("http://127.0.0.1:7897");
+                    // 测试代理是否可用
+                    var testReq = System.Net.WebRequest.CreateHttp("http://127.0.0.1:7897");
+                    testReq.Timeout = 2000;
+                    testReq.Method = "GET";
+                    using var testResp = (System.Net.HttpWebResponse)await Task.Run(() => (System.Net.HttpWebResponse)testReq.GetResponse());
+                    if (testResp.StatusCode == System.Net.HttpStatusCode.OK || testResp.StatusCode == System.Net.HttpStatusCode.BadRequest)
+                    {
+                        handler.Proxy = new System.Net.WebProxy(proxyUri);
+                        handler.UseProxy = true;
+                    }
+                }
+                catch
+                {
+                    // 代理不可用，尝试直连或系统代理
+                    handler.UseProxy = true;
+                    handler.Proxy = System.Net.Http.HttpClient.DefaultProxy;
+                }
                 using var client = new System.Net.Http.HttpClient(handler);
                 client.DefaultRequestHeaders.UserAgent.ParseAdd("PUBGMonitor/2.0");
                 client.Timeout = TimeSpan.FromSeconds(15);
