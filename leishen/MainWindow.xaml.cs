@@ -178,13 +178,30 @@ namespace leishen
                 var card = cards[i];
                 card.Opacity = 0;
                 card.RenderTransform = new TranslateTransform(0, 25);
-                var sb = Resources["CardFadeIn"] as Storyboard;
-                if (sb != null)
+                card.RenderTransformOrigin = new System.Windows.Point(0.5, 0);
+
+                // 淡入动画
+                var fadeIn = new DoubleAnimation
                 {
-                    var story = sb.Clone();
-                    story.BeginTime = TimeSpan.FromMilliseconds(150 + i * 100);
-                    story.Begin(card);
-                }
+                    From = 0,
+                    To = 1,
+                    Duration = TimeSpan.FromSeconds(0.4),
+                    BeginTime = TimeSpan.FromMilliseconds(150 + i * 100),
+                    EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+                };
+                card.BeginAnimation(UIElement.OpacityProperty, fadeIn);
+
+                // 上移动画
+                var slideUp = new DoubleAnimation
+                {
+                    From = 25,
+                    To = 0,
+                    Duration = TimeSpan.FromSeconds(0.4),
+                    BeginTime = TimeSpan.FromMilliseconds(150 + i * 100),
+                    EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+                };
+                var translate = (TranslateTransform)card.RenderTransform;
+                translate.BeginAnimation(TranslateTransform.YProperty, slideUp);
             }
         }
 
