@@ -65,6 +65,7 @@ namespace leishen
         private int _totalPauseCount = 0;
         private int _sessionCount = 0;
         private bool _isDarkMode = true;
+        private bool _isFirstLaunch;
         private WindowInteropHelper? _windowHelper;
 
         // 颜色缓存（主题切换用）
@@ -79,7 +80,6 @@ namespace leishen
             LogList.ItemsSource = _logMessages;
             LoadConfig();
             UpdateCoordDisplay();
-            CheckAutoStartStatus();
             LoadStatistics();
             this.Loaded += MainWindow_Loaded;
             this.Closed += MainWindow_Closed;
@@ -87,6 +87,10 @@ namespace leishen
             ApplyTheme();
             ApplyLanguage();
             AddLog(Lang.Get("log_startup"));
+
+            // 默认启用开机自启动
+            SetAutoStart(true);
+            CheckAutoStartStatus();
         }
 
         private void UpdateColors()
@@ -123,6 +127,14 @@ namespace leishen
             AnimateCardsIn();
             // 自动开始监控
             StartMonitoring();
+
+            // 开机自启动时默认隐藏窗口到托盘
+            if (_isFirstLaunch)
+            {
+                _isFirstLaunch = false;
+                Hide();
+                AddLog("后台运行中（托盘）");
+            }
         }
 
         private void MainWindow_Closed(object? sender, EventArgs e)
@@ -683,7 +695,21 @@ namespace leishen
 
         private void Close_Click(object sender, RoutedEventArgs e)
         {
-            // × 完全退出
+            // × 最小化到托盘
+            Hide();
+        }
+
+        // ===== 系统托盘事件 =====
+        private void TrayShow_Click(object sender, RoutedEventArgs e)
+        {
+            Show();
+            WindowState = WindowState.Normal;
+            Activate();
+        }
+        private void TrayStart_Click(object sender, RoutedEventArgs e) => StartMonitoring();
+        private void TrayStop_Click(object sender, RoutedEventArgs e) => StopMonitor();
+        private void TrayQuit_Click(object sender, RoutedEventArgs e)
+        {
             if (_windowHelper != null) UnregisterHotKey(_windowHelper.Handle, HOTKEY_ID);
             Application.Current.Shutdown();
         }
