@@ -4,6 +4,17 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      version_bump:
+        description: 'Version bump type'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
 
 jobs:
   build:
@@ -20,24 +31,49 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore leishen/leishen.csproj
 
+      - name: Extract version from tag
+        id: get_version
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $version = $tag -replace '^v', ''
+          echo "VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          echo "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
       - name: Build Release
-        run: dotnet publish leishen/leishen.csproj -c Release -r win-x86 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
+        run: |
+          dotnet publish leishen/leishen.csproj `
+            -c Release -r win-x86 --self-contained true `
+            -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true `
+            -p:Version=${{ steps.get_version.outputs.version }}
 
       - name: Create Release Archive
+        shell: pwsh
         run: |
-          Compress-Archive -Path leishen/bin/Release/net8.0-windows/win-x86/publish/* -DestinationPath leishen-publish.zip
+          Compress-Archive -Path leishen/bin/Release/net8.0-windows/win-x86/publish/* -DestinationPath leishen-publish-${{ steps.get_version.outputs.version }}.zip
+
+      - name: Extract Changelog for this version
+        id: changelog
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}"
+          # Read CHANGELOG.md and extract section for this version
+          $changelog = Get-Content -Raw CHANGELOG.md
+          if ($changelog -match "(?ms)## $tag.*?(?=## |\Z)") {
+            $section = $Matches[0].Trim()
+          } elseif ($changelog -match "(?ms)## $([regex]::Escape($tag -replace '^v', '')).*?(?=## |\Z)") {
+            $section = $Matches[0].Trim()
+          } else {
+            $section = "请查看 CHANGELOG.md 获取完整更新说明。"
+          }
+          # Escape for GitHub Actions output
+          $section = $section -replace '%', '%25' -replace '\n', '%0A' -replace '\r', '%0D'
+          echo "body=$section" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           name: PUBG助手 ${{ github.ref_name }}
-          body: |
-            ## PUBG助手 ${{ github.ref_name }}
-
-            ### 更新说明
-            自动打包发布
-
-            ### 下载
-            - `leishen-publish.zip` — 完整的发布包（含 .NET 运行时的单文件 exe）
-          files: leishen-publish.zip
-          generate_release_notes: true
+          body: ${{ steps.changelog.outputs.body }}
+          files: leishen-publish-${{ steps.get_version.outputs.version }}.zip
+          generate_release_notes: false

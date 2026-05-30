@@ -27,7 +27,7 @@
             <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
                 <TextBlock x:Name="TxtReminderTitle" Text="⚠️ 游戏已退出 ⚠️" FontSize="72" FontWeight="ExtraBold" Foreground="Yellow" HorizontalAlignment="Center"/>
                 <TextBlock x:Name="TxtReminderSub" Text="PUBG 已经关闭！" FontSize="44" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" Margin="0,20,0,10"/>
-                <TextBlock x:Name="TxtReminderDetail" Text="已自动暂停雷神加速器" FontSize="28" Foreground="#FF8888" HorizontalAlignment="Center" Margin="0,10,0,10"/>
+                <TextBlock x:Name="TxtReminderDetail" Text="自行确认是否暂停加速器" FontSize="28" Foreground="#FF8888" HorizontalAlignment="Center" Margin="0,10,0,10"/>
                 <Border Background="#AA0000" CornerRadius="15" Padding="20,15" Margin="0,20,0,30">
                     <StackPanel>
                         <TextBlock x:Name="TxtPauseTime" Text="暂停时间：刚刚" FontSize="20" Foreground="White" HorizontalAlignment="Center"/>

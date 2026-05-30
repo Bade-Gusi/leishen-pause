@@ -2,57 +2,79 @@ namespace leishen
 {
     public static class Lang
     {
-        public static string CurrentLang = "zh";
+        private static string _currentLang = "zh";
+        private static Dictionary<string, string>? _currentCache;
+
+        public static string CurrentLang
+        {
+            get => _currentLang;
+            set { _currentLang = value; _currentCache = null; }
+        }
 
         // 所有支持的语言列表 (语言代码 -> 显示名称)
-        public static Dictionary<string, string> Languages => new()
+        public static readonly Dictionary<string, string> Languages = new()
         {
-            ["zh"] = "中文",        // 中文简体
-            ["en"] = "English",     // 英语
-            ["ja"] = "日本語",      // 日语
-            ["ko"] = "한국어",      // 韩语
-            ["es"] = "Español",     // 西班牙语
-            ["fr"] = "Français",    // 法语
-            ["de"] = "Deutsch",     // 德语
-            ["pt"] = "Português",   // 葡萄牙语
-            ["ru"] = "Русский",     // 俄语
-            ["ar"] = "العربية",     // 阿拉伯语
-            ["hi"] = "हिन्दी",       // 印地语
-            ["it"] = "Italiano",    // 意大利语
-            ["nl"] = "Nederlands",  // 荷兰语
-            ["pl"] = "Polski",      // 波兰语
-            ["sv"] = "Svenska",     // 瑞典语
-            ["tr"] = "Türkçe",      // 土耳其语
-            ["th"] = "ไทย",         // 泰语
-            ["vi"] = "Tiếng Việt",  // 越南语
-            ["id"] = "Bahasa Indonesia", // 印尼语
-            ["ms"] = "Bahasa Melayu",    // 马来语
-            ["tl"] = "Filipino",    // 菲律宾语
-            ["cs"] = "Čeština",     // 捷克语
-            ["hu"] = "Magyar",      // 匈牙利语
-            ["ro"] = "Română",      // 罗马尼亚语
-            ["bn"] = "বাংলা",       // 孟加拉语
-            ["uk"] = "Українська",  // 乌克兰语
-            ["el"] = "Ελληνικά",    // 希腊语
-            ["da"] = "Dansk",       // 丹麦语
-            ["fi"] = "Suomi",       // 芬兰语
-            ["no"] = "Norsk",       // 挪威语
-            ["sk"] = "Slovenčina",  // 斯洛伐克语
-            ["he"] = "עברית",       // 希伯来语
+            ["zh"] = "中文",
+            ["en"] = "English",
+            ["ja"] = "日本語",
+            ["ko"] = "한국어",
+            ["es"] = "Español",
+            ["fr"] = "Français",
+            ["de"] = "Deutsch",
+            ["pt"] = "Português",
+            ["ru"] = "Русский",
+            ["ar"] = "العربية",
+            ["hi"] = "हिन्दी",
+            ["it"] = "Italiano",
+            ["nl"] = "Nederlands",
+            ["pl"] = "Polski",
+            ["sv"] = "Svenska",
+            ["tr"] = "Türkçe",
+            ["th"] = "ไทย",
+            ["vi"] = "Tiếng Việt",
+            ["id"] = "Bahasa Indonesia",
+            ["ms"] = "Bahasa Melayu",
+            ["tl"] = "Filipino",
+            ["cs"] = "Čeština",
+            ["hu"] = "Magyar",
+            ["ro"] = "Română",
+            ["bn"] = "বাংলা",
+            ["uk"] = "Українська",
+            ["el"] = "Ελληνικά",
+            ["da"] = "Dansk",
+            ["fi"] = "Suomi",
+            ["no"] = "Norsk",
+            ["sk"] = "Slovenčina",
+            ["he"] = "עברית",
         };
 
         public static string Get(string key)
         {
-            if (CurrentLang != "zh" && Translations.TryGetValue(key, out var langDict)
-                && langDict.TryGetValue(CurrentLang, out var val) && !string.IsNullOrEmpty(val))
-                return val;
-            // fallback to 中文
-            if (Zh.TryGetValue(key, out var zhVal))
-                return zhVal;
-            // final fallback to 英文
-            if (En.TryGetValue(key, out var enVal))
-                return enVal;
+            if (key == "app_version") return VersionInfo.Tag;
+            if (key == "app_subtitle") return $"{Description} · {VersionInfo.Tag}";
+
+            var cache = _currentCache ??= BuildCache();
+            if (cache.TryGetValue(key, out var val)) return val;
             return key;
+        }
+
+        private static string Description => CurrentLang == "zh" ? "智能时长暂停工具" : "Smart Pause Tool";
+
+        private static Dictionary<string, string> BuildCache()
+        {
+            // Start with zh as base, overlay en as secondary fallback, then current language
+            var dict = new Dictionary<string, string>(Zh.Count + En.Count);
+            foreach (var kv in Zh) dict[kv.Key] = kv.Value;
+            foreach (var kv in En) { if (!dict.ContainsKey(kv.Key)) dict[kv.Key] = kv.Value; }
+            if (_currentLang != "zh")
+            {
+                foreach (var kv in Translations)
+                {
+                    if (kv.Value.TryGetValue(_currentLang, out var val) && !string.IsNullOrEmpty(val))
+                        dict[kv.Key] = val;
+                }
+            }
+            return dict;
         }
 
         // 翻译表: key -> langCode -> translation

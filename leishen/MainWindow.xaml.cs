@@ -9,6 +9,8 @@ using System.Windows.Media;
 using System.Windows.Automation;
 using System.Windows.Media.Animation;
 using System.IO;
+using System.IO.Compression;
+using System.Net.Http;
 using System.Text.Json;
 using Microsoft.Win32;
 using System.Windows.Interop;
@@ -16,9 +18,6 @@ using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 using System.Text;
 using Application = System.Windows.Application;
-using WpfBorder = System.Windows.Controls.Border;
-using WpfTextBlock = System.Windows.Controls.TextBlock;
-using WpfControl = System.Windows.Controls.Control;
 using WpfMenuItem = System.Windows.Controls.MenuItem;
 using WpfContextMenu = System.Windows.Controls.ContextMenu;
 
@@ -65,7 +64,6 @@ namespace leishen
         private int _totalPauseCount = 0;
         private int _sessionCount = 0;
         private bool _isDarkMode = true;
-        private bool _isFirstLaunch;
         private WindowInteropHelper? _windowHelper;
 
         // 颜色缓存（主题切换用）
@@ -125,22 +123,17 @@ namespace leishen
 
             UpdateStatisticsDisplay();
             AnimateCardsIn();
-            // 自动开始监控
             StartMonitoring();
-
-            // 开机自启动时默认隐藏窗口到托盘
-            if (_isFirstLaunch)
-            {
-                _isFirstLaunch = false;
-                Hide();
-                AddLog("后台运行中（托盘）");
-            }
         }
 
         private void MainWindow_Closed(object? sender, EventArgs e)
         {
             if (_windowHelper != null)
+            {
                 UnregisterHotKey(_windowHelper.Handle, HOTKEY_ID);
+                var source = HwndSource.FromHwnd(_windowHelper.Handle);
+                source?.RemoveHook(HwndHook);
+            }
         }
 
         private IntPtr HwndHook(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
@@ -232,7 +225,7 @@ namespace leishen
         private void StartSpinner() { SafeUI(() => { SpinnerBorder.Visibility = Visibility.Visible; (Resources["SpinAnimation"] as Storyboard)?.Begin(Spinner); }); }
         private void StopSpinner() { SafeUI(() => { (Resources["SpinAnimation"] as Storyboard)?.Stop(Spinner); SpinnerBorder.Visibility = Visibility.Collapsed; }); }
 
-        private void SafeUI(Action a) { try { if (!Dispatcher.CheckAccess()) Dispatcher.Invoke(a); else a(); } catch (Exception ex) { Debug.WriteLine(ex.Message); } }
+        private void SafeUI(Action a) { try { if (!Dispatcher.CheckAccess()) Dispatcher.Invoke(a); else a(); } catch (Exception ex) { AddLog($"UI错误: {ex.Message}"); } }
 
         // ======================== 监控 ========================
         public void StartMonitoring()
@@ -288,13 +281,16 @@ namespace leishen
                     SetStatus("status_paused", "#00C853", "✓"); StopSpinner();
                     SafeUI(() => { if (GameNameText != null) GameNameText.Text = Lang.Get("status_game_closed"); });
                     AddLog($"{Lang.Get("log_game_closed")} (今日第{_todayPauseCount}次)");
-                    _ = Task.Run(async () =>
+                    _ = Task.Run(() =>
                     {
-                        await Task.Delay(500);
-                        DoPause();
-                        await Task.Delay(300);
-                        SafeUI(() => { UpdateStatisticsDisplay(); SaveStatistics();
-                            if (ChkShowReminder != null && ChkShowReminder.IsChecked == true) ShowReminderWindow(); });
+                        try
+                        {
+                            Thread.Sleep(500);
+                            DoPause();
+                            Thread.Sleep(300);
+                            SafeUI(() => { UpdateStatisticsDisplay(); SaveStatistics(); if (ChkShowReminder?.IsChecked == true) ShowReminderWindow(); });
+                        }
+                        catch (Exception ex) { AddLog($"暂停操作异常: {ex.Message}"); }
                     });
                 }
             });
@@ -578,84 +574,125 @@ namespace leishen
         }
 
         // ======================== 检查更新 ========================
-        private const string GitHubRepoOwner = "Bade-Gusi";
-        private const string GitHubRepoName = "leishen-pause";
-        private const string CurrentVersion = "v2.0";
-
         private async Task CheckForUpdatesAsync()
         {
             AddLog(Lang.Get("log_update_checking"));
             try
             {
-                // 使用系统代理设置
                 var handler = new System.Net.Http.HttpClientHandler
                 {
                     UseProxy = true,
                     Proxy = System.Net.Http.HttpClient.DefaultProxy
                 };
                 using var client = new System.Net.Http.HttpClient(handler);
-                client.DefaultRequestHeaders.UserAgent.ParseAdd("PUBGMonitor/2.0");
+                client.DefaultRequestHeaders.UserAgent.ParseAdd(VersionInfo.UserAgent);
                 client.Timeout = TimeSpan.FromSeconds(15);
-                string url = $"https://api.github.com/repos/{GitHubRepoOwner}/{GitHubRepoName}/releases/latest";
-                AddLog($"  请求: {url}");
-                var resp = await client.GetStringAsync(url);
+                AddLog($"  请求: {VersionInfo.ReleaseApiUrl}");
+                var resp = await client.GetStringAsync(VersionInfo.ReleaseApiUrl);
                 var rel = JsonSerializer.Deserialize<GitHubRelease>(resp);
-                if (rel?.TagName != null && string.Compare(rel.TagName, CurrentVersion, StringComparison.OrdinalIgnoreCase) > 0)
+                if (rel?.TagName != null && string.Compare(rel.TagName, VersionInfo.Tag, StringComparison.OrdinalIgnoreCase) > 0)
                 {
                     AddLog($"{Lang.Get("log_update_found")}: {rel.TagName}");
-                    if (MessageBox.Show(string.Format(Lang.Get("update_msg"), rel.TagName, rel.Body ?? ""), Lang.Get("update_title"), MessageBoxButton.YesNo, MessageBoxImage.Information) == MessageBoxResult.Yes)
-                    {
-                        var asset = rel.Assets?.FirstOrDefault(a => a.Name?.EndsWith(".exe") == true || a.Name?.EndsWith(".zip") == true);
-                        Process.Start(new ProcessStartInfo { FileName = asset?.BrowserDownloadUrl ?? rel.HtmlUrl ?? $"https://github.com/{GitHubRepoOwner}/{GitHubRepoName}/releases", UseShellExecute = true });
-                    }
+                    var result = MessageBox.Show(
+                        string.Format(Lang.Get("update_msg"), rel.TagName, rel.Body ?? ""),
+                        Lang.Get("update_title"),
+                        MessageBoxButton.YesNo,
+                        MessageBoxImage.Information);
+                    if (result == MessageBoxResult.Yes)
+                        await DownloadAndInstallAsync(rel);
                 }
                 else AddLog(Lang.Get("log_update_latest"));
             }
             catch (Exception ex) { AddLog($"{Lang.Get("log_update_failed")}: {ex.Message}"); }
         }
 
+        private async Task DownloadAndInstallAsync(GitHubRelease release)
+        {
+            var asset = release.Assets?.FirstOrDefault(a =>
+                !string.IsNullOrEmpty(a.Name) && (a.Name.EndsWith(".exe") || a.Name.EndsWith(".zip")));
+            if (asset?.BrowserDownloadUrl == null)
+            {
+                AddLog("❌ 未找到可下载的发布包");
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = release.HtmlUrl ?? VersionInfo.DownloadBaseUrl,
+                    UseShellExecute = true
+                });
+                return;
+            }
+
+            AddLog($"⬇ 正在下载 {asset.Name} ...");
+            using var client = new HttpClient();
+            client.DefaultRequestHeaders.UserAgent.ParseAdd(VersionInfo.UserAgent);
+            client.Timeout = TimeSpan.FromMinutes(5);
+
+            string? assetName = asset.Name;
+            if (string.IsNullOrEmpty(assetName)) { AddLog("❌ 无效的文件名"); return; }
+            string downloadPath = Path.Combine(Path.GetTempPath(), assetName);
+            using (var response = await client.GetAsync(asset.BrowserDownloadUrl, HttpCompletionOption.ResponseHeadersRead))
+            using (var fs = new FileStream(downloadPath, FileMode.Create, FileAccess.Write, FileShare.None))
+            {
+                await response.Content.CopyToAsync(fs);
+            }
+            AddLog("✅ 下载完成");
+
+            // 解压并启动新版本
+            string extractDir = Path.Combine(Path.GetTempPath(), "leishen_update_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(extractDir);
+
+            if (assetName.EndsWith(".zip"))
+            {
+                System.IO.Compression.ZipFile.ExtractToDirectory(downloadPath, extractDir);
+                var newExe = Directory.GetFiles(extractDir, "*.exe").FirstOrDefault()
+                    ?? Directory.GetFiles(extractDir, "*.exe", SearchOption.AllDirectories).FirstOrDefault();
+                if (newExe != null)
+                {
+                    AddLog($"🚀 启动新版本: {newExe}");
+                    Process.Start(new ProcessStartInfo { FileName = newExe, UseShellExecute = true });
+                    Application.Current.Shutdown();
+                }
+            }
+            else if (assetName.EndsWith(".exe"))
+            {
+                AddLog($"🚀 启动安装程序: {downloadPath}");
+                Process.Start(new ProcessStartInfo { FileName = downloadPath, UseShellExecute = true });
+                Application.Current.Shutdown();
+            }
+        }
+
         // ======================== 主题切换（完整覆盖+渐变动画） ========================
         private void ApplyTheme()
         {
-            SafeUI(() =>
+            UpdateColors();
+
+            // 主容器
+            MainBorder.Background = new SolidColorBrush(_bg);
+            TopLine.Background = new SolidColorBrush(Accent);
+
+            // 按钮
+            BtnThemeToggle.Content = _isDarkMode ? "🌙" : "☀️";
+            ChkDarkMode.IsChecked = _isDarkMode;
+            TxtDarkIcon.Text = _isDarkMode ? "🌙" : "☀️";
+            TxtOptDarkmode.Text = Lang.Get(_isDarkMode ? "theme_dark" : "theme_light");
+
+            // 卡片背景
+            foreach (var c in new[] { CardStatus, CardCoord, CardOptions, CardLog })
             {
-                UpdateColors();
+                c.Background = new SolidColorBrush(_card);
+                c.BorderBrush = new SolidColorBrush(_border);
+            }
 
-                // 主容器
-                SetColor(MainBorder, WpfBorder.BackgroundProperty, _bg);
-                SetColor(TopLine, WpfBorder.BackgroundProperty, Accent);
+            // 选项内嵌背景
+            foreach (var b in new[] { CoordInnerBg, Opt1Bg, Opt2Bg, Opt3Bg, Opt4Bg })
+                b.Background = new SolidColorBrush(_bg);
 
-                // 按钮
-                if (BtnThemeToggle != null) BtnThemeToggle.Content = _isDarkMode ? "🌙" : "☀️";
-                if (ChkDarkMode != null) ChkDarkMode.IsChecked = _isDarkMode;
-                if (TxtDarkIcon != null) TxtDarkIcon.Text = _isDarkMode ? "🌙" : "☀️";
-                if (TxtOptDarkmode != null) TxtOptDarkmode.Text = Lang.Get(_isDarkMode ? "theme_dark" : "theme_light");
+            // 标题文字
+            foreach (var x in new[] { TxtSectionCoord, TxtSectionOptions, TxtSectionLog,
+                TxtOptAutostart, TxtOptReminder, TxtOptDarkmode, TxtOptUpdate })
+                x.Foreground = new SolidColorBrush(_textMain);
 
-                // 卡片背景
-                foreach (var c in new[] { CardStatus, CardCoord, CardOptions, CardLog })
-                    if (c != null) { SetColor(c, WpfBorder.BackgroundProperty, _card); SetColor(c, WpfBorder.BorderBrushProperty, _border); }
-
-                // 选项内嵌背景
-                foreach (var b in new[] { CoordInnerBg, Opt1Bg, Opt2Bg, Opt3Bg, Opt4Bg })
-                    if (b != null) SetColor(b, WpfBorder.BackgroundProperty, _bg);
-
-                // 标题文字
-                foreach (var x in new[] { TxtSectionCoord, TxtSectionOptions, TxtSectionLog,
-                    TxtOptAutostart, TxtOptReminder, TxtOptDarkmode, TxtOptUpdate })
-                    if (x != null) SetColor(x, WpfTextBlock.ForegroundProperty, _textMain);
-
-                // log list 背景
-                if (LogList != null) SetColor(LogList, WpfControl.BackgroundProperty, _bg);
-            });
-        }
-
-        private void SetColor(DependencyObject target, DependencyProperty prop, Color toColor)
-        {
-            if (target == null) return;
-            if (prop == WpfBorder.BackgroundProperty && target is WpfBorder b) b.Background = new SolidColorBrush(toColor);
-            else if (prop == WpfBorder.BorderBrushProperty && target is WpfBorder br) br.BorderBrush = new SolidColorBrush(toColor);
-            else if (prop == WpfTextBlock.ForegroundProperty && target is WpfTextBlock tb) tb.Foreground = new SolidColorBrush(toColor);
-            else if (prop == WpfControl.BackgroundProperty && target is WpfControl c) c.Background = new SolidColorBrush(toColor);
+            // log list 背景
+            LogList.Background = new SolidColorBrush(_bg);
         }
 
         // ======================== 语言选择（弹出列表） ========================
@@ -772,66 +809,38 @@ namespace leishen
         // ======================== 语言 ========================
         private void ApplyLanguage()
         {
-            SafeUI(() =>
-            {
-                Helper.SetText(TxtAppTitle, Lang.Get("app_title"));
-                Helper.SetText(TxtAppSubtitle, $"{(Lang.CurrentLang == "zh" ? "智能时长暂停工具" : "Smart Pause Tool")} · {Lang.Get("app_version")}");
-                Helper.SetText(TxtStatusLabel, Lang.Get("status_label"));
-                Helper.SetText(TxtTodayLabel, Lang.Get("today_pause"));
-                Helper.SetText(TxtSavedLabel, Lang.Get("saved"));
-                Helper.SetContent(BtnCapture, Lang.Get("btn_capture"));
-                Helper.SetContent(BtnTestClick, Lang.Get("btn_test"));
-                Helper.SetContent(BtnCheckUpdate, Lang.Get("btn_check_update"));
-                Helper.SetContent(BtnClearLog, Lang.Get("btn_clear_log"));
-                Helper.SetText(TxtSectionCoordDesc, Lang.Get("section_coord_desc"));
-                Helper.SetText(TxtCoordLabel, Lang.Get("coord_label"));
-                Helper.SetText(TxtCoordHint, Lang.Get("coord_hint"));
-                Helper.SetText(TxtSectionOptionsDesc, Lang.Get("section_options_desc"));
-                Helper.SetText(TxtOptAutostart, Lang.Get("opt_autostart"));
-                Helper.SetText(TxtOptReminder, Lang.Get("opt_reminder"));
-                Helper.SetText(TxtOptDarkmode, Lang.Get(_isDarkMode ? "theme_dark" : "theme_light"));
-                Helper.SetText(TxtOptUpdate, Lang.Get("opt_check_update"));
-                Helper.SetText(TxtSectionLogDesc, Lang.Get("section_log_desc"));
-                Helper.SetText(TxtSectionCoord, Lang.Get("section_coord"));
-                Helper.SetText(TxtSectionOptions, Lang.Get("section_options"));
-                Helper.SetText(TxtSectionLog, Lang.Get("section_log"));
-                Helper.SetText(TxtFooter, Lang.Get("footer_copyright"));
-                Helper.SetText(TxtQQ, "QQ: 2994938720");
-                Helper.SetText(TxtOptAutostart, Lang.Get("opt_autostart"));
-                Helper.SetText(TxtOptReminder, Lang.Get("opt_reminder"));
-                Helper.SetText(TxtOptUpdate, Lang.Get("opt_check_update"));
-                Helper.SetText(TxtSectionCoord, Lang.Get("section_coord"));
-                Helper.SetText(TxtSectionOptions, Lang.Get("section_options"));
-                Helper.SetText(TxtSectionLog, Lang.Get("section_log"));
-                Helper.SetText(TxtAppTitle, Lang.Get("app_title"));
-                Helper.SetText(TxtStatusLabel, Lang.Get("status_label"));
-                Helper.SetText(TxtTodayLabel, Lang.Get("today_pause"));
-                Helper.SetText(TxtSavedLabel, Lang.Get("saved"));
-                Helper.SetContent(BtnCapture, Lang.Get("btn_capture"));
-                Helper.SetContent(BtnTestClick, Lang.Get("btn_test"));
-                Helper.SetContent(BtnCheckUpdate, Lang.Get("btn_check_update"));
-                Helper.SetContent(BtnClearLog, Lang.Get("btn_clear_log"));
-                UpdateStatisticsDisplay();
-                Helper.SetText(TxtSectionCoordDesc, Lang.Get("section_coord_desc"));
-                Helper.SetText(TxtCoordLabel, Lang.Get("coord_label"));
-                Helper.SetText(TxtCoordHint, Lang.Get("coord_hint"));
-                Helper.SetText(TxtSectionOptionsDesc, Lang.Get("section_options_desc"));
-                Helper.SetText(TxtSectionLogDesc, Lang.Get("section_log_desc"));
-                Helper.SetText(TxtFooter, Lang.Get("footer_copyright"));
-                Helper.SetText(TxtQQ, "QQ: 2994938720");
-                if (StatusText != null)
-                    StatusText.Text = Lang.Get(_isGameRunning ? "status_gaming" : _isMonitoring ? "status_scanning" : "status_idle");
-                if (GameNameText != null)
-                    GameNameText.Text = Lang.Get(_isGameRunning ? "status_protecting" : _isMonitoring ? "status_detecting" : "status_waiting");
-                if (BtnStop != null) BtnStop.Content = _isMonitoring ? Lang.Get("btn_stop") : Lang.Get("btn_start");
-            });
-        }
-    }
+            TxtAppTitle.Text = Lang.Get("app_title");
+            TxtAppSubtitle.Text = $"{(Lang.CurrentLang == "zh" ? "智能时长暂停工具" : "Smart Pause Tool")} · {Lang.Get("app_version")}";
+            TxtStatusLabel.Text = Lang.Get("status_label");
+            TxtTodayLabel.Text = Lang.Get("today_pause");
+            TxtSavedLabel.Text = Lang.Get("saved");
+            BtnCapture.Content = Lang.Get("btn_capture");
+            BtnTestClick.Content = Lang.Get("btn_test");
+            BtnCheckUpdate.Content = Lang.Get("btn_check_update");
+            BtnClearLog.Content = Lang.Get("btn_clear_log");
+            TxtCoordLabel.Text = Lang.Get("coord_label");
+            TxtCoordHint.Text = Lang.Get("coord_hint");
+            TxtOptAutostart.Text = Lang.Get("opt_autostart");
+            TxtOptReminder.Text = Lang.Get("opt_reminder");
+            TxtOptDarkmode.Text = Lang.Get(_isDarkMode ? "theme_dark" : "theme_light");
+            TxtOptUpdate.Text = Lang.Get("opt_check_update");
+            TxtFooter.Text = Lang.Get("footer_copyright");
+            TxtQQ.Text = "QQ: 2994938720";
+            UpdateStatisticsDisplay();
 
-    public static class Helper
-    {
-        public static void SetText(System.Windows.Controls.TextBlock? tb, string text) { if (tb != null) tb.Text = text; }
-        public static void SetContent(System.Windows.Controls.Button? btn, object content) { if (btn != null) btn.Content = content; }
+            // Section headers
+            TxtSectionCoord.Text = Lang.Get("section_coord");
+            TxtSectionOptions.Text = Lang.Get("section_options");
+            TxtSectionLog.Text = Lang.Get("section_log");
+            TxtSectionCoordDesc.Text = Lang.Get("section_coord_desc");
+            TxtSectionOptionsDesc.Text = Lang.Get("section_options_desc");
+            TxtSectionLogDesc.Text = Lang.Get("section_log_desc");
+
+            // Dynamic status labels
+            StatusText.Text = Lang.Get(_isGameRunning ? "status_gaming" : _isMonitoring ? "status_scanning" : "status_idle");
+            GameNameText.Text = Lang.Get(_isGameRunning ? "status_protecting" : _isMonitoring ? "status_detecting" : "status_waiting");
+            BtnStop.Content = _isMonitoring ? Lang.Get("btn_stop") : Lang.Get("btn_start");
+        }
     }
 
     public class CoordConfig { public int X { get; set; } public int Y { get; set; } }

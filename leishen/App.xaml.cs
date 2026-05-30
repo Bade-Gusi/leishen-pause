@@ -1,4 +1,3 @@
-using Microsoft.Win32;
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -10,8 +9,6 @@ namespace leishen
 {
     public partial class App : Application
     {
-        private const string REG_RUN_PATH = @"Software\Microsoft\Windows\CurrentVersion\Run";
-        private const string APP_NAME = "PUBGMonitor";
 
         [ComImport]
         [Guid("00021401-0000-0000-C000-000000000046")]
@@ -59,19 +56,6 @@ namespace leishen
         {
             base.OnStartup(e);
             CreateDesktopShortcut();
-            SetDefaultAutoStart();
-
-            // 确保程序完全退出时杀死所有相关进程
-            Exit += (s, ev) =>
-            {
-                try
-                {
-                    var current = Process.GetCurrentProcess();
-                    foreach (var p in Process.GetProcessesByName(current.ProcessName))
-                        if (p.Id != current.Id) p.Kill();
-                }
-                catch { }
-            };
         }
 
         private void CreateDesktopShortcut()
@@ -87,7 +71,7 @@ namespace leishen
                 IShellLink link = (IShellLink)new ShellLink();
                 link.SetPath(appPath);
                 link.SetWorkingDirectory(Path.GetDirectoryName(appPath));
-                link.SetDescription("PUBG助手 v2.0 - 智能时长暂停工具 · 巴德古斯");
+                link.SetDescription($"{VersionInfo.Title} {VersionInfo.Tag} - {VersionInfo.Description} · 巴德古斯");
 
                 IPersistFile file = (IPersistFile)link;
                 file.Save(shortcutPath, false);
@@ -95,25 +79,6 @@ namespace leishen
             catch (Exception ex)
             {
                 Debug.WriteLine($"创建快捷方式失败：{ex.Message}");
-            }
-        }
-
-        private void SetDefaultAutoStart()
-        {
-            try
-            {
-                using (RegistryKey key = Registry.CurrentUser.OpenSubKey(REG_RUN_PATH, true))
-                {
-                    if (key != null && key.GetValue(APP_NAME) == null)
-                    {
-                        string appPath = Process.GetCurrentProcess().MainModule.FileName;
-                        key.SetValue(APP_NAME, appPath);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"设置开机自启动失败：{ex.Message}");
             }
         }
     }

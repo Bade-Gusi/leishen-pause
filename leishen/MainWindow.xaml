@@ -115,7 +115,7 @@
                     </Border>
                     <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
                         <TextBlock x:Name="TxtAppTitle" Text="PUBG MONITOR" FontSize="20" FontWeight="ExtraBold" Foreground="#E8E8E8"/>
-                        <TextBlock x:Name="TxtAppSubtitle" Text="智能时长暂停工具 · v2.0" FontSize="10" Foreground="#667788" Margin="0,2,0,0"/>
+                        <TextBlock x:Name="TxtAppSubtitle" Text="智能时长暂停工具" FontSize="10" Foreground="#667788" Margin="0,2,0,0"/>
                     </StackPanel>
                     <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Top">
                         <!-- 语言选择 -->
@@ -320,7 +320,7 @@
                     <Rectangle Height="1" Fill="#2A2A4A" Margin="20,0,20,10" Opacity="0.5"/>
                     <TextBlock x:Name="TxtFooter" Text="© 巴德古斯 设计" HorizontalAlignment="Center" FontSize="10" Foreground="#556677"/>
                     <TextBlock x:Name="TxtQQ" Text="QQ: 2994938720" HorizontalAlignment="Center" FontSize="9" Foreground="#3A3A4A" Margin="0,2,0,0"/>
-                    <TextBlock x:Name="TxtVersionInfo" Text="v2.0" HorizontalAlignment="Center" FontSize="9" Foreground="#3A3A4A" Margin="0,2,0,0"/>
+                    <TextBlock x:Name="TxtVersionInfo" HorizontalAlignment="Center" FontSize="9" Foreground="#3A3A4A" Margin="0,2,0,0"/>
                 </StackPanel>
 
                 <!-- ===== 缩放手柄 ===== -->
