@@ -39,6 +39,10 @@ namespace leishen
         [DllImport("user32.dll")] static extern IntPtr GetAncestor(IntPtr hwnd, uint gaFlags);
         [DllImport("user32.dll")] static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
         [DllImport("user32.dll")] static extern bool GetCursorPos(out POINT lpPoint);
+        [DllImport("kernel32.dll")] static extern IntPtr CreateToolhelp32Snapshot(uint dwFlags, uint th32ProcessID);
+        [DllImport("kernel32.dll")] static extern bool Process32First(IntPtr hSnapshot, ref PROCESSENTRY32 lppe);
+        [DllImport("kernel32.dll")] static extern bool Process32Next(IntPtr hSnapshot, ref PROCESSENTRY32 lppe);
+        [DllImport("kernel32.dll")] static extern bool CloseHandle(IntPtr hObject);
         private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
         private const uint WM_LBUTTONDOWN = 0x0201;
         private const uint WM_LBUTTONUP = 0x0202;
@@ -49,6 +53,28 @@ namespace leishen
         private const uint MOD_SHIFT = 0x0004;
         private const uint VK_P = 0x50;
         private const int WM_HOTKEY = 0x0312;
+        private const uint TH32CS_SNAPPROCESS = 0x00000002;
+
+        /// <summary>
+        /// 安全检测进程是否存在。只读内核快照，不 OpenProcess，绝不触发反作弊。
+        /// </summary>
+        private static bool IsProcessRunning(string exeName)
+        {
+            IntPtr snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+            if (snapshot == IntPtr.Zero || snapshot == (IntPtr)(-1)) return false;
+            try
+            {
+                var entry = new PROCESSENTRY32 { dwSize = (uint)Marshal.SizeOf<PROCESSENTRY32>() };
+                if (!Process32First(snapshot, ref entry)) return false;
+                do
+                {
+                    if (string.Equals(entry.szExeFile, exeName + ".exe", StringComparison.OrdinalIgnoreCase))
+                        return true;
+                } while (Process32Next(snapshot, ref entry));
+                return false;
+            }
+            finally { CloseHandle(snapshot); }
+        }
 
         private DispatcherTimer? _timer;
         private bool _isGameRunning = false;
@@ -260,7 +286,7 @@ namespace leishen
 
         private async Task CheckProcessAsync()
         {
-            bool found = await Task.Run(() => { try { return Process.GetProcessesByName("TslGame").Any(); } catch { return false; } });
+            bool found = await Task.Run(() => { try { return IsProcessRunning("TslGame"); } catch { return false; } });
             SafeUI(() =>
             {
                 if (found)
@@ -850,4 +876,20 @@ namespace leishen
     [StructLayout(LayoutKind.Sequential)]
     public struct RECT { public int Left; public int Top; public int Right; public int Bottom; }
     public struct POINT { public int X; public int Y; }
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
+    public struct PROCESSENTRY32
+    {
+        public uint dwSize;
+        public uint cntUsage;
+        public uint th32ProcessID;
+        public IntPtr th32DefaultHeapID;
+        public uint th32ModuleID;
+        public uint cntThreads;
+        public uint th32ParentProcessID;
+        public int pcPriClassBase;
+        public uint dwFlags;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 260)]
+        public string szExeFile;
+    }
 }
