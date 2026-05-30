@@ -175,7 +175,7 @@
                 <Grid Margin="0,15,0,0" Height="56">
                     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                     <Button x:Name="BtnStop" Grid.Column="0" Content="⏹ 停止监控" Click="StopMonitor_Click"
-                            Cursor="Hand" Height="50" Background="#C62828" Foreground="White" FontWeight="Bold"
+                            Cursor="" Height="50" Background="#C62828" Foreground="White" FontWeight="Bold"
                             FontSize="15" Style="{StaticResource PrimaryButtonStyle}">
                         <Button.RenderTransform><ScaleTransform CenterX="0.5" CenterY="0.5"/></Button.RenderTransform>
                         <Button.Triggers><EventTrigger RoutedEvent="MouseEnter"><BeginStoryboard Storyboard="{StaticResource BtnScaleEnter}"/></EventTrigger><EventTrigger RoutedEvent="MouseLeave"><BeginStoryboard Storyboard="{StaticResource BtnScaleLeave}"/></EventTrigger></Button.Triggers>

@@ -845,37 +845,36 @@ namespace leishen
         // ======================== 语言 ========================
         private void ApplyLanguage()
         {
-            TxtAppTitle.Text = Lang.Get("app_title");
-            TxtAppSubtitle.Text = $"{(Lang.CurrentLang == "zh" ? "智能时长暂停工具" : "Smart Pause Tool")} · {Lang.Get("app_version")}";
-            TxtStatusLabel.Text = Lang.Get("status_label");
-            TxtTodayLabel.Text = Lang.Get("today_pause");
-            TxtSavedLabel.Text = Lang.Get("saved");
-            BtnCapture.Content = Lang.Get("btn_capture");
-            BtnTestClick.Content = Lang.Get("btn_test");
-            BtnCheckUpdate.Content = Lang.Get("btn_check_update");
-            BtnClearLog.Content = Lang.Get("btn_clear_log");
-            TxtCoordLabel.Text = Lang.Get("coord_label");
-            TxtCoordHint.Text = Lang.Get("coord_hint");
-            TxtOptAutostart.Text = Lang.Get("opt_autostart");
-            TxtOptReminder.Text = Lang.Get("opt_reminder");
-            TxtOptDarkmode.Text = Lang.Get(_isDarkMode ? "theme_dark" : "theme_light");
-            TxtOptUpdate.Text = Lang.Get("opt_check_update");
-            TxtFooter.Text = Lang.Get("footer_copyright");
-            TxtQQ.Text = "QQ: 2994938720";
-            UpdateStatisticsDisplay();
-
-            // Section headers
-            TxtSectionCoord.Text = Lang.Get("section_coord");
-            TxtSectionOptions.Text = Lang.Get("section_options");
-            TxtSectionLog.Text = Lang.Get("section_log");
-            TxtSectionCoordDesc.Text = Lang.Get("section_coord_desc");
-            TxtSectionOptionsDesc.Text = Lang.Get("section_options_desc");
-            TxtSectionLogDesc.Text = Lang.Get("section_log_desc");
-
-            // Dynamic status labels
-            StatusText.Text = Lang.Get(_isGameRunning ? "status_gaming" : _isMonitoring ? "status_scanning" : "status_idle");
-            GameNameText.Text = Lang.Get(_isGameRunning ? "status_protecting" : _isMonitoring ? "status_detecting" : "status_waiting");
-            BtnStop.Content = _isMonitoring ? Lang.Get("btn_stop") : Lang.Get("btn_start");
+            SafeUI(() =>
+            {
+                if (TxtAppTitle != null) TxtAppTitle.Text = Lang.Get("app_title");
+                if (TxtAppSubtitle != null) TxtAppSubtitle.Text = $"{(Lang.CurrentLang == "zh" ? "智能时长暂停工具" : "Smart Pause Tool")} · {Lang.Get("app_version")}";
+                if (TxtStatusLabel != null) TxtStatusLabel.Text = Lang.Get("status_label");
+                if (TxtTodayLabel != null) TxtTodayLabel.Text = Lang.Get("today_pause");
+                if (TxtSavedLabel != null) TxtSavedLabel.Text = Lang.Get("saved");
+                if (BtnCapture != null) BtnCapture.Content = Lang.Get("btn_capture");
+                if (BtnTestClick != null) BtnTestClick.Content = Lang.Get("btn_test");
+                if (BtnCheckUpdate != null) BtnCheckUpdate.Content = Lang.Get("btn_check_update");
+                if (BtnClearLog != null) BtnClearLog.Content = Lang.Get("btn_clear_log");
+                if (TxtCoordLabel != null) TxtCoordLabel.Text = Lang.Get("coord_label");
+                if (TxtCoordHint != null) TxtCoordHint.Text = Lang.Get("coord_hint");
+                if (TxtOptAutostart != null) TxtOptAutostart.Text = Lang.Get("opt_autostart");
+                if (TxtOptReminder != null) TxtOptReminder.Text = Lang.Get("opt_reminder");
+                if (TxtOptDarkmode != null) TxtOptDarkmode.Text = Lang.Get(_isDarkMode ? "theme_dark" : "theme_light");
+                if (TxtOptUpdate != null) TxtOptUpdate.Text = Lang.Get("opt_check_update");
+                if (TxtFooter != null) TxtFooter.Text = Lang.Get("footer_copyright");
+                if (TxtQQ != null) TxtQQ.Text = "QQ: 2994938720";
+                if (TxtSectionCoord != null) TxtSectionCoord.Text = Lang.Get("section_coord");
+                if (TxtSectionOptions != null) TxtSectionOptions.Text = Lang.Get("section_options");
+                if (TxtSectionLog != null) TxtSectionLog.Text = Lang.Get("section_log");
+                if (TxtSectionCoordDesc != null) TxtSectionCoordDesc.Text = Lang.Get("section_coord_desc");
+                if (TxtSectionOptionsDesc != null) TxtSectionOptionsDesc.Text = Lang.Get("section_options_desc");
+                if (TxtSectionLogDesc != null) TxtSectionLogDesc.Text = Lang.Get("section_log_desc");
+                if (StatusText != null) StatusText.Text = Lang.Get(_isGameRunning ? "status_gaming" : _isMonitoring ? "status_scanning" : "status_idle");
+                if (GameNameText != null) GameNameText.Text = Lang.Get(_isGameRunning ? "status_protecting" : _isMonitoring ? "status_detecting" : "status_waiting");
+                if (BtnStop != null) BtnStop.Content = _isMonitoring ? Lang.Get("btn_stop") : Lang.Get("btn_start");
+                UpdateStatisticsDisplay();
+            });
         }
     }
 
