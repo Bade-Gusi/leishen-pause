@@ -689,36 +689,46 @@ namespace leishen
         // ======================== 主题切换（完整覆盖+渐变动画） ========================
         private void ApplyTheme()
         {
-            UpdateColors();
-
-            // 主容器
-            MainBorder.Background = new SolidColorBrush(_bg);
-            TopLine.Background = new SolidColorBrush(Accent);
-
-            // 按钮
-            BtnThemeToggle.Content = _isDarkMode ? "🌙" : "☀️";
-            ChkDarkMode.IsChecked = _isDarkMode;
-            TxtDarkIcon.Text = _isDarkMode ? "🌙" : "☀️";
-            TxtOptDarkmode.Text = Lang.Get(_isDarkMode ? "theme_dark" : "theme_light");
-
-            // 卡片背景
-            foreach (var c in new[] { CardStatus, CardCoord, CardOptions, CardLog })
+            SafeUI(() =>
             {
-                c.Background = new SolidColorBrush(_card);
-                c.BorderBrush = new SolidColorBrush(_border);
-            }
+                UpdateColors();
 
-            // 选项内嵌背景
-            foreach (var b in new[] { CoordInnerBg, Opt1Bg, Opt2Bg, Opt3Bg, Opt4Bg })
-                b.Background = new SolidColorBrush(_bg);
+                // 主容器
+                MainBorder.Background = new SolidColorBrush(_bg);
+                TopLine.Background = new SolidColorBrush(Accent);
 
-            // 标题文字
-            foreach (var x in new[] { TxtSectionCoord, TxtSectionOptions, TxtSectionLog,
-                TxtOptAutostart, TxtOptReminder, TxtOptDarkmode, TxtOptUpdate })
-                x.Foreground = new SolidColorBrush(_textMain);
+                // 按钮
+                BtnThemeToggle.Content = _isDarkMode ? "🌙" : "☀️";
+                ChkDarkMode.IsChecked = _isDarkMode;
+                TxtDarkIcon.Text = _isDarkMode ? "🌙" : "☀️";
+                TxtOptDarkmode.Text = Lang.Get(_isDarkMode ? "theme_dark" : "theme_light");
 
-            // log list 背景
-            LogList.Background = new SolidColorBrush(_bg);
+                // 卡片背景
+                foreach (var c in new[] { CardStatus, CardCoord, CardOptions, CardLog })
+                {
+                    if (c == null) continue;
+                    c.Background = new SolidColorBrush(_card);
+                    c.BorderBrush = new SolidColorBrush(_border);
+                }
+
+                // 选项内嵌背景
+                foreach (var b in new[] { CoordInnerBg, Opt1Bg, Opt2Bg, Opt3Bg, Opt4Bg })
+                {
+                    if (b == null) continue;
+                    b.Background = new SolidColorBrush(_bg);
+                }
+
+                // 标题文字
+                foreach (var x in new[] { TxtSectionCoord, TxtSectionOptions, TxtSectionLog,
+                    TxtOptAutostart, TxtOptReminder, TxtOptDarkmode, TxtOptUpdate })
+                {
+                    if (x == null) continue;
+                    x.Foreground = new SolidColorBrush(_textMain);
+                }
+
+                // log list 背景
+                if (LogList != null) LogList.Background = new SolidColorBrush(_bg);
+            });
         }
 
         // ======================== 语言选择（弹出列表） ========================
